@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        background: #c9c9c9;
+        font-family: sans-serif;
+      }
+      button {
+        padding: 10px 20px;
+      }
+
+      .knob::after {
+        position: absolute;
+        content: " ";
+        width: 5px;
+        height: 5px;
+        border-radius: 100%;
+        top: -8px;
+        left: 13px;
+        background-color: #ddd;
+      }
+
+      #midi-logger {
+        font-family: sans-serif;
+        font-size: 36px;
+      }
+
+      #oscilloscope {
+        width: 100%;
+        height: 200px;
+      }
+      #filter-response {
+        width: 400px;
+        height: 200px;
+        background: red;
+      }
+
+      .knob-container {
+        border: 2px solid #111;
+        border-radius: 8px;
+        display: inline-block;
+      }
+      .knob-container .knob-container__header {
+        background: #111;
+        color: #ddd;
+        padding: 8px 16px;
+        text-transform: uppercase;
+      }
+      .knob-container .knob-container__knobs {
+        padding: 8px 16px;
+        display: flex;
+        flex-direction: row;
+        margin-top: 20px;
+      }
+
+      .knob {
+        position: relative;
+        background: radial-gradient(
+          circle,
+          rgba(199, 199, 199, 1) 0%,
+          rgba(159, 159, 159, 1) 35%,
+          rgba(115, 115, 115, 1) 100%
+        );
+        width: 50px;
+        height: 50px;
+        margin-bottom: 20px;
+        border-radius: 200px;
+        border: 10px solid black;
+        box-sizing: border-box;
+      }
+      .knob:not(:last-child) {
+        margin-right: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="init" style="" d>Initialize</button>
+    <div>
+      <div class="knob-container">
+        <div class="knob-container__header">Knobs</div>
+        <div class="knob-container__knobs">
+          <div class="knob"></div>
+          <div class="knob"></div>
+          <div class="knob"></div>
+          <div class="knob"></div>
+        </div>
+        <div class="knob-container__knobs">
+          <div class="knob"></div>
+          <div class="knob"></div>
+          <div class="knob"></div>
+          <div class="knob"></div>
+        </div>
+      </div>
+    </div>
+    <div id="midi-logger"></div>
+    <canvas id="filter-response"></canvas>
+    <canvas id="oscilloscope"></canvas>
+    <script src="main.js"></script>
+  </body>
+</html>
