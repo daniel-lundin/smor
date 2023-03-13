@@ -4,9 +4,10 @@ function exponetialEase(value) {
   return Math.pow(2, 10 * value - 10);
 }
 
-function createOscillator(audioContext, frequency, type = "sawtooth") {
+function createOscillator(audioContext, frequency, detune, type) {
   const oscillator = audioContext.createOscillator();
   oscillator.type = type;
+  oscillator.detune.setValueAtTime(detune, audioContext.currentTime);
   oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime); // value in hertz
 
   return oscillator;
@@ -48,6 +49,7 @@ function createEnvelope({ initialDecay, onValueChange }) {
   };
 }
 
+const oscillatorTypes = ["sine", "square", "sawtooth", "triangle"];
 function createMonoSynth(audioContext, output) {
   let oscillators = null;
 
@@ -76,6 +78,8 @@ function createMonoSynth(audioContext, output) {
 
   let gainNodes = [audioContext.createGain(), audioContext.createGain()];
   gainNodes.forEach((gainNode) => gainNode.connect(filter));
+  let squareDetune = 0;
+  let sawDetune = 0;
 
   let keysPressed = [];
   return {
@@ -85,8 +89,8 @@ function createMonoSynth(audioContext, output) {
       const frequency = MIDINoteToHertz(note);
       if (!oscillators) {
         oscillators = [
-          createOscillator(audioContext, frequency, "square"),
-          createOscillator(audioContext, frequency, "sawtooth"),
+          createOscillator(audioContext, frequency, squareDetune, "square"),
+          createOscillator(audioContext, frequency, sawDetune, "sawtooth"),
         ];
         oscillators.forEach((oscillator, index) => {
           oscillator.connect(gainNodes[index]);
@@ -123,7 +127,6 @@ function createMonoSynth(audioContext, output) {
       gainNodes[1].gain.setValueAtTime(value, audioContext.currentTime);
     },
     setFilterCutoff(freq) {
-      console.log("filter cutoff", freq);
       filterCutoff = freq;
       filter.frequency.setValueAtTime(
         freq + envelopeFilterOffset,
@@ -144,6 +147,16 @@ function createMonoSynth(audioContext, output) {
     },
     getSawOscillator() {
       return gainNodes[1];
+    },
+    setSawDetune(cents) {
+      sawDetune = cents;
+      if (oscillators)
+        oscillators[0].detune.setValueAtTime(cents, audioContext.currentTime);
+    },
+    setSquareDetune(cents) {
+      squareDetune = cents;
+      if (oscillators)
+        oscillators[1].detune.setValueAtTime(cents, audioContext.currentTime);
     },
   };
 }
@@ -181,6 +194,46 @@ function init() {
     6: "filter-envelope-decay",
     7: "filter-envelope-amount",
   };
+
+  for (const knob of Object.entries(knobMapping)) {
+    const [control, id] = knob;
+
+    document.getElementById(id).addEventListener("input", (event) => {
+      updateSynth(Number(control), Number(event.target.value));
+    });
+  }
+
+  function updateSynth(control, value) {
+    if (control === 0) {
+      synth.setSquareAmplitude(value / 127);
+    } else if (control === 4) {
+      synth.setSawAmplitude(value / 127);
+    } else if (control === 1) {
+      synth.setSquareDetune((value / 127) * 100);
+    } else if (control === 5) {
+      synth.setSawDetune((value / 127) * 100);
+    } else if (control === 2) {
+      const easedValue = exponetialEase(value / 127);
+      // console.log('eased value', easedValue, value);
+      const minFreq = 0;
+      const maxFreq = 20000;
+      const freq = minFreq + (maxFreq - minFreq) * easedValue;
+      synth.setFilterCutoff(freq);
+    } else if (control === 3) {
+      synth.setFilterResonance(25 * (value / 127));
+    } else if (control === 6) {
+      synth.setEnvelopeDecay((value / 127) * 1000);
+    } else if (control === 7) {
+      synth.setEnvelopeFrequencyOffset((value / 127) * 5000);
+    } else {
+    }
+
+    if (control >= 0 && control <= 7) {
+      document.getElementById(knobMapping[control]).value = Math.round(
+        (value / 127) * 100
+      );
+    }
+  }
   initMIDI({
     onNoteDown: (note) => {
       synth.attack(note);
@@ -189,36 +242,9 @@ function init() {
       synth.release(note);
     },
     onKnobChange: (control, value) => {
-      if (control === 0) {
-        synth.setSquareAmplitude(value / 127);
-      }
-      if (control === 4) {
-        synth.setSawAmplitude(value / 127);
-      }
-      if (control === 2) {
-        const easedValue = exponetialEase(value / 127);
-          // console.log('eased value', easedValue, value);
-        const minFreq = 0;
-        const maxFreq = 20000;
-        const freq = minFreq + (maxFreq - minFreq) * easedValue;
-        synth.setFilterCutoff(freq);
-      }
-      if (control === 3) {
-        synth.setFilterResonance(25 * (value / 127));
-      }
-      if (control === 6) {
-        synth.setEnvelopeDecay((value / 127) * 1000);
-      }
-      if (control === 7) {
-        synth.setEnvelopeFrequencyOffset((value / 127) * 5000);
-      }
-
-      if (control >= 0 && control <= 7) {
-        document.getElementById(knobMapping[control]).value = Math.round(
-          (value / 127) * 100
-        );
-      }
+      updateSynth(control, value);
     },
+    onDrumPad: (_) => {},
   });
 
   document.addEventListener("keydown", (e) => {
@@ -241,7 +267,7 @@ document.addEventListener(
   { once: true }
 );
 
-function initMIDI({ onNoteUp, onNoteDown, onKnobChange }) {
+function initMIDI({ onNoteUp, onNoteDown, onKnobChange, onDrumPad }) {
   navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
   function onMIDISuccess(midiAccess) {
     for (const input of midiAccess.inputs.values()) {
@@ -258,6 +284,8 @@ function initMIDI({ onNoteUp, onNoteDown, onKnobChange }) {
       const value = midiMessage.data[2];
       const knobIndex = midiMessage.data[1] - 70;
       onKnobChange(knobIndex, value);
+    } else if (midiMessage.data[0] === 201) {
+      onDrumPad(midiMessage.data[1]);
     } else {
       console.log("unknown message", midiMessage.data);
     }
