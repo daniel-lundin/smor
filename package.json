@@ -1,0 +1,19 @@
+{
+  "name": "smor",
+  "version": "0.0.1",
+  "description": "synthesizer",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daniel-lundin/smor.git"
+  },
+  "author": "d-dog@d-dog.se",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/daniel-lundin/smor/issues"
+  },
+  "homepage": "https://github.com/daniel-lundin/smor#readme"
+}

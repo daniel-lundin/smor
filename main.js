@@ -1,23 +1,5 @@
 const initButton = document.getElementById("init");
 
-let audioContext;
-const kKnobs = Array(8).fill(0);
-
-let currentNote = null;
-let keysPressed = [];
-
-function slideDuration() {
-  return kKnobs[7] / 127;
-}
-
-function lowshelfFrequency() {
-  return (kKnobs[6] / 127) * 20000;
-}
-
-function Q() {
-  return (kKnobs[5] / 127) * 10;
-}
-
 function exponetialEase(value) {
   return Math.pow(2, 10 * value - 10);
 }
@@ -114,7 +96,7 @@ function createMonoSynth(audioContext, output) {
         oscillators.forEach((oscillator) => {
           oscillator.frequency.linearRampToValueAtTime(
             frequency,
-            audioContext.currentTime + 0.1
+            audioContext.currentTime
           );
         });
       }
@@ -129,7 +111,7 @@ function createMonoSynth(audioContext, output) {
         oscillators.forEach((oscillator) => {
           oscillator.frequency.linearRampToValueAtTime(
             MIDINoteToHertz(keysPressed.at(-1)),
-            audioContext.currentTime + 0.1
+            audioContext.currentTime
           );
         });
       }
@@ -141,6 +123,7 @@ function createMonoSynth(audioContext, output) {
       gainNodes[1].gain.setValueAtTime(value, audioContext.currentTime);
     },
     setFilterCutoff(freq) {
+      console.log("filter cutoff", freq);
       filterCutoff = freq;
       filter.frequency.setValueAtTime(
         freq + envelopeFilterOffset,
@@ -156,15 +139,37 @@ function createMonoSynth(audioContext, output) {
     setEnvelopeFrequencyOffset(freq) {
       envelopeFrequencyOffset = freq;
     },
+    getSquareOscillator() {
+      return gainNodes[0];
+    },
+    getSawOscillator() {
+      return gainNodes[1];
+    },
   };
 }
 
 function init() {
   const audioContext = new window.AudioContext();
-  const analyser = createOscilloscope(audioContext);
+  const analyser = createOscilloscope(
+    audioContext,
+    document.getElementById("oscilloscope")
+  );
 
   const synth = createMonoSynth(audioContext, analyser);
+
   analyser.connect(audioContext.destination);
+
+  // Oscillator analyers
+  const squareAnalyser = createOscilloscope(
+    audioContext,
+    document.getElementById("square-canvas")
+  );
+  synth.getSquareOscillator().connect(squareAnalyser);
+  const sawAnalyser = createOscilloscope(
+    audioContext,
+    document.getElementById("saw-canvas")
+  );
+  synth.getSawOscillator().connect(sawAnalyser);
 
   const knobMapping = {
     0: "square-amplitude",
@@ -192,7 +197,8 @@ function init() {
       }
       if (control === 2) {
         const easedValue = exponetialEase(value / 127);
-        const minFreq = 10;
+          // console.log('eased value', easedValue, value);
+        const minFreq = 0;
         const maxFreq = 20000;
         const freq = minFreq + (maxFreq - minFreq) * easedValue;
         synth.setFilterCutoff(freq);
@@ -208,7 +214,9 @@ function init() {
       }
 
       if (control >= 0 && control <= 7) {
-        document.getElementById(knobMapping[control]).value = Math.round((value / 127)*100);
+        document.getElementById(knobMapping[control]).value = Math.round(
+          (value / 127) * 100
+        );
       }
     },
   });
@@ -321,14 +329,13 @@ function drawFilterReponse(canvas, filter) {
   requestAnimationFrame(draw);
 }
 
-function createOscilloscope(audioContext) {
+function createOscilloscope(audioContext, canvas) {
   const analyser = audioContext.createAnalyser();
   analyser.fftSize = 2048;
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
   analyser.getByteTimeDomainData(dataArray);
 
-  const canvas = document.getElementById("oscilloscope");
   const canvasCtx = canvas.getContext("2d");
 
   function draw() {
