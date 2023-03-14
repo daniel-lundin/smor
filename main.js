@@ -8,7 +8,7 @@ function createOscillator(audioContext, frequency, detune, type) {
   const oscillator = audioContext.createOscillator();
   oscillator.type = type;
   oscillator.detune.setValueAtTime(detune, audioContext.currentTime);
-  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime); // value in hertz
+  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
 
   return oscillator;
 }
@@ -151,12 +151,12 @@ function createMonoSynth(audioContext, output) {
     setSawDetune(cents) {
       sawDetune = cents;
       if (oscillators)
-        oscillators[0].detune.setValueAtTime(cents, audioContext.currentTime);
+        oscillators[1].detune.setValueAtTime(cents, audioContext.currentTime);
     },
     setSquareDetune(cents) {
       squareDetune = cents;
       if (oscillators)
-        oscillators[1].detune.setValueAtTime(cents, audioContext.currentTime);
+        oscillators[0].detune.setValueAtTime(cents, audioContext.currentTime);
     },
   };
 }
@@ -199,6 +199,7 @@ function init() {
     const [control, id] = knob;
 
     document.getElementById(id).addEventListener("input", (event) => {
+      console.log("change", control, event.target.value);
       updateSynth(Number(control), Number(event.target.value));
     });
   }
@@ -247,14 +248,28 @@ function init() {
     onDrumPad: (_) => {},
   });
 
-  document.addEventListener("keydown", (e) => {
-    if (e.code === "Space") {
-      synth.attack(440);
+  const keymapping = {
+    z: 36,
+    s: 37,
+    x: 38,
+    d: 39,
+    c: 40,
+    v: 41,
+    g: 42,
+    b: 43,
+    h: 44,
+    n: 45,
+    j: 46,
+    m: 47,
+  };
+  document.addEventListener("keydown", (event) => {
+    if (keymapping[event.key] && !event.repeat) {
+      synth.attack(keymapping[event.key]);
     }
   });
-  document.addEventListener("keyup", (e) => {
-    if (e.code === "Space") {
-      synth.release();
+  document.addEventListener("keyup", (event) => {
+    if (keymapping[event.key] && !event.repeat) {
+      synth.release(keymapping[event.key]);
     }
   });
 }
@@ -362,7 +377,6 @@ function createOscilloscope(audioContext, canvas) {
   analyser.fftSize = 2048;
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
-  analyser.getByteTimeDomainData(dataArray);
 
   const canvasCtx = canvas.getContext("2d");
 
