@@ -13,17 +13,49 @@ function createOscillator(audioContext, frequency, detune, type) {
   return oscillator;
 }
 
-function createEnvelope({ initialDecay, onValueChange }) {
+function createEnvelope({
+  audioContext,
+  param,
+  initialDecay,
+  initialAttack,
+  initialFilterAmount,
+  onValueChange,
+}) {
+  let attack = initialAttack;
   let decay = initialDecay;
+  let filterAmount = initialFilterAmount;
   return {
     setDecay(updatedDecay) {
       decay = updatedDecay;
     },
+    setAttack(updatedAttack) {
+      attack = updatedAttack;
+    },
+    setFilterAmount(updatedFilterAmount) {
+      filterAmount = updatedFilterAmount;
+    },
 
     attack() {
-      if (decay === 0) return;
+      if (decay === 0 && attack === 0) return;
+
+      param.cancelScheduledValues(audioContext.currentTime);
+
+      param.linearRampToValueAtTime(
+        param.value + filterAmount,
+        audioContext.currentTime + attack / 1000
+      );
+
+      param.linearRampToValueAtTime(
+        param.value,
+        audioContext.currentTime + attack / 1000 + decay / 1000
+      );
+    },
+
+    _attack() {
+      if (decay === 0 && attack === 0) return;
       let value = 1;
 
+      param.setValue;
       onValueChange(value);
 
       let previousTimestamp = performance.now();
@@ -45,7 +77,9 @@ function createEnvelope({ initialDecay, onValueChange }) {
       requestAnimationFrame(tween);
     },
 
-    release() {},
+    release() {
+      param.cancelScheduledValues(audioContext.currentTime);
+    },
   };
 }
 
@@ -71,18 +105,22 @@ class SmorSynth extends EventTarget {
     drawFilterReponse(document.getElementById("filter-response"), this.filter);
 
     this.envelopeFilterOffset = 0;
-    this.envelopeFrequencyOffset = 5000;
+    //this.envelopeFrequencyOffset = 5000;
 
     this.envelope = createEnvelope({
+      audioContext,
+      param: this.filter.frequency,
+      initialAttack: 200,
       initialDecay: 200,
-      onValueChange: (value) => {
-        this.envelopeFilterOffset =
-          exponetialEase(value) * this.envelopeFrequencyOffset;
-        this.filter.frequency.setValueAtTime(
-          this.filterCutoff + this.envelopeFilterOffset,
-          this.audioContext.currentTime
-        );
-      },
+      initialFilterAmount: 200,
+      // onValueChange: (value) => {
+      //   this.envelopeFilterOffset =
+      //     exponetialEase(value) * this.envelopeFrequencyOffset;
+      //   this.filter.frequency.setValueAtTime(
+      //     this.filterCutoff + this.envelopeFilterOffset,
+      //     this.audioContext.currentTime
+      //   );
+      // },
     });
 
     this.gainNodes = [
@@ -96,14 +134,31 @@ class SmorSynth extends EventTarget {
     this.keysPressed = [];
   }
 
+  _dispatchFrequencyChange(frequency) {
+    const event = new CustomEvent("frequencyChange", { detail: frequency });
+    this.dispatchEvent(event);
+  }
+
   attack(note) {
     this.envelope.attack();
     this.keysPressed.push(note);
     const frequency = MIDINoteToHertz(note);
+    this._dispatchFrequencyChange(frequency);
+
     if (!this.oscillators) {
       this.oscillators = [
-        createOscillator(this.audioContext, frequency, this.squareDetune, "square"),
-        createOscillator(this.audioContext, frequency, this.sawDetune, "sawtooth"),
+        createOscillator(
+          this.audioContext,
+          frequency,
+          this.squareDetune,
+          "square"
+        ),
+        createOscillator(
+          this.audioContext,
+          frequency,
+          this.sawDetune,
+          "sawtooth"
+        ),
       ];
       this.oscillators.forEach((oscillator, index) => {
         oscillator.connect(this.gainNodes[index]);
@@ -124,10 +179,16 @@ class SmorSynth extends EventTarget {
     if (this.keysPressed.length === 0) {
       this.oscillators?.forEach((oscillator) => oscillator.stop());
       this.oscillators = null;
+      this.filter.frequency.setValueAtTime(
+        this.filterCutoff,
+        this.audioContext.currentTime
+      );
     } else {
+      const frequency = MIDINoteToHertz(this.keysPressed.at(-1));
+      this._dispatchFrequencyChange(frequency);
       this.oscillators.forEach((oscillator) => {
         oscillator.frequency.linearRampToValueAtTime(
-          MIDINoteToHertz(this.keysPressed.at(-1)),
+          frequency,
           this.audioContext.currentTime
         );
       });
@@ -152,11 +213,15 @@ class SmorSynth extends EventTarget {
   setFilterResonance(value) {
     this.filter.Q.setValueAtTime(value, this.audioContext.currentTime);
   }
+  setEnvelopeAttack(value) {
+    this.envelope.setAttack(value);
+  }
   setEnvelopeDecay(value) {
     this.envelope.setDecay(value);
   }
   setEnvelopeFrequencyOffset(freq) {
-    this.envelopeFrequencyOffset = freq;
+    this.envelope.setFilterAmount(freq);
+    // this.envelopeFrequencyOffset = freq;
   }
   getSquareOscillator() {
     return this.gainNodes[0];
@@ -183,27 +248,30 @@ class SmorSynth extends EventTarget {
 }
 
 function init() {
-  const audioContext = new window.AudioContext();
+  const audioContext = new window.AudioContext({ sampleRate: 44100 });
   const { analyser, setFrequency } = createOscilloscope(
     audioContext,
     document.getElementById("oscilloscope")
   );
-
-  // const synth = createMonoSynth(audioContext, analyser);
-  const synth = new SmorSynth(audioContext, analyser);
-
-  analyser.connect(audioContext.destination);
-
   // Oscillator analyers
-  const { analyser: squareAnalyser } = createOscilloscope(
-    audioContext,
-    document.getElementById("square-canvas")
-  );
-  synth.getSquareOscillator().connect(squareAnalyser);
-  const { analyser: sawAnalyser } = createOscilloscope(
+  const { analyser: squareAnalyser, setFrequency: setSquareAnalyserFrequency } =
+    createOscilloscope(audioContext, document.getElementById("square-canvas"));
+  const { analyser: sawAnalyser, setFrequency: setSawAnalyzerFrequency } = createOscilloscope(
     audioContext,
     document.getElementById("saw-canvas")
   );
+
+  const synth = new SmorSynth(audioContext, analyser);
+
+  synth.addEventListener("frequencyChange", (event) => {
+    setFrequency(event.detail);
+    setSquareAnalyserFrequency(event.detail);
+    setSawAnalyzerFrequency(event.detail);
+  });
+
+  analyser.connect(audioContext.destination);
+
+  synth.getSquareOscillator().connect(squareAnalyser);
   synth.getSawOscillator().connect(sawAnalyser);
 
   const knobMapping = {
@@ -215,13 +283,13 @@ function init() {
     3: "filter-resonance",
     6: "filter-envelope-decay",
     7: "filter-envelope-amount",
+    8: "filter-envelope-attack",
   };
 
   for (const knob of Object.entries(knobMapping)) {
     const [control, id] = knob;
 
     document.getElementById(id).addEventListener("input", (event) => {
-      console.log("change", control, event.target.value);
       updateSynth(Number(control), Number(event.target.value));
     });
   }
@@ -237,7 +305,6 @@ function init() {
       synth.setSawDetune((value / 127) * 100);
     } else if (control === 2) {
       const easedValue = exponetialEase(value / 127);
-      // console.log('eased value', easedValue, value);
       const minFreq = 0;
       const maxFreq = 20000;
       const freq = minFreq + (maxFreq - minFreq) * easedValue;
@@ -246,6 +313,8 @@ function init() {
       synth.setFilterResonance(25 * (value / 127));
     } else if (control === 6) {
       synth.setEnvelopeDecay((value / 127) * 1000);
+    } else if (control === 8) {
+      synth.setEnvelopeAttack((value / 127) * 1000);
     } else if (control === 7) {
       synth.setEnvelopeFrequencyOffset((value / 127) * 5000);
     } else {
@@ -270,6 +339,7 @@ function init() {
     onDrumPad: (_) => {},
   });
 
+  const offset = 0;
   const keymapping = {
     z: 36,
     s: 37,
@@ -283,15 +353,16 @@ function init() {
     n: 45,
     j: 46,
     m: 47,
+    ",": 48,
   };
   document.addEventListener("keydown", (event) => {
     if (keymapping[event.key] && !event.repeat) {
-      synth.attack(keymapping[event.key]);
+      synth.attack(keymapping[event.key] + offset);
     }
   });
   document.addEventListener("keyup", (event) => {
     if (keymapping[event.key] && !event.repeat) {
-      synth.release(keymapping[event.key]);
+      synth.release(keymapping[event.key] + offset);
     }
   });
 }
@@ -305,6 +376,10 @@ document.addEventListener(
 );
 
 function initMIDI({ onNoteUp, onNoteDown, onKnobChange, onDrumPad }) {
+  if (!navigator.requestMIDIAccess) {
+    console.warn("No midi access");
+    return;
+  }
   navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
   function onMIDISuccess(midiAccess) {
     for (const input of midiAccess.inputs.values()) {
@@ -401,10 +476,18 @@ function createOscilloscope(audioContext, canvas) {
   const dataArray = new Uint8Array(bufferLength);
 
   const canvasCtx = canvas.getContext("2d");
-  let nodeFrequency = 440;
+  let noteFrequency = 440;
+
+  const sampleRate = 44100;
 
   function draw() {
-    requestAnimationFrame(draw);
+    const sampleTime = Math.round(audioContext.currentTime * sampleRate);
+    const period = Math.round(sampleRate / noteFrequency);
+    const offsetX = sampleTime % period;
+    const startIndex = period - offsetX;
+    const periodsToShow = Math.max(Math.floor(bufferLength / period) - 1, 1);
+
+    const endIndex = startIndex + periodsToShow * period;
 
     analyser.getByteTimeDomainData(dataArray);
 
@@ -418,14 +501,14 @@ function createOscilloscope(audioContext, canvas) {
 
     canvasCtx.beginPath();
 
-    const sliceWidth = (canvas.width * 1.0) / bufferLength;
+    const sliceWidth = (canvas.width * 1.0) / (endIndex - startIndex);
     let x = 0;
 
-    for (let i = 0; i < bufferLength; i++) {
+    for (let i = period - offsetX; i < endIndex; i++) {
       const v = dataArray[i] / 128.0;
       const y = (v * canvas.height) / 2;
 
-      if (i === 0) {
+      if (i === startIndex) {
         canvasCtx.moveTo(x, y);
       } else {
         canvasCtx.lineTo(x, y);
@@ -434,15 +517,33 @@ function createOscilloscope(audioContext, canvas) {
       x += sliceWidth;
     }
 
-    canvasCtx.lineTo(canvas.width, canvas.height / 2);
+    // canvasCtx.lineTo(canvas.width, canvas.height / 2);
     canvasCtx.stroke();
+    requestAnimationFrame(draw);
   }
 
   draw();
   return {
     analyser,
     setFrequency: (newFrequency) => {
-      nodeFrequency = newFrequency;
+      noteFrequency = newFrequency;
     },
   };
 }
+
+(async () => {
+  const audioContext = new window.AudioContext({ sampleRate: 44100 });
+  const { analyser, setFrequency } = createOscilloscope(
+    audioContext,
+    document.getElementById("testscope")
+  );
+
+  const freq = 200;
+  setFrequency(freq);
+
+  const oscillator = audioContext.createOscillator();
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+  oscillator.connect(analyser);
+  oscillator.start();
+})();
