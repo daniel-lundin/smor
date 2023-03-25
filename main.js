@@ -14,48 +14,23 @@ function createOscillator(audioContext, frequency, detune, type) {
 }
 
 function createEnvelope({
-  audioContext,
-  param,
-  initialDecay,
-  initialAttack,
-  initialFilterAmount,
   onValueChange,
+    initialDecay
 }) {
-  let attack = initialAttack;
   let decay = initialDecay;
-  let filterAmount = initialFilterAmount;
   return {
     setDecay(updatedDecay) {
       decay = updatedDecay;
-    },
-    setAttack(updatedAttack) {
-      attack = updatedAttack;
     },
     setFilterAmount(updatedFilterAmount) {
       filterAmount = updatedFilterAmount;
     },
 
     attack() {
-      if (decay === 0 && attack === 0) return;
-
-      param.cancelScheduledValues(audioContext.currentTime);
-
-      param.linearRampToValueAtTime(
-        param.value + filterAmount,
-        audioContext.currentTime + attack / 1000
-      );
-
-      param.linearRampToValueAtTime(
-        param.value,
-        audioContext.currentTime + attack / 1000 + decay / 1000
-      );
-    },
-
-    _attack() {
-      if (decay === 0 && attack === 0) return;
+      if (decay === 0) return;
       let value = 1;
 
-      param.setValue;
+      // param.setValue;
       onValueChange(value);
 
       let previousTimestamp = performance.now();
@@ -78,7 +53,6 @@ function createEnvelope({
     },
 
     release() {
-      param.cancelScheduledValues(audioContext.currentTime);
     },
   };
 }
@@ -105,22 +79,21 @@ class SmorSynth extends EventTarget {
     drawFilterReponse(document.getElementById("filter-response"), this.filter);
 
     this.envelopeFilterOffset = 0;
-    //this.envelopeFrequencyOffset = 5000;
+    this.envelopeFrequencyOffset = 5000;
 
     this.envelope = createEnvelope({
       audioContext,
       param: this.filter.frequency,
-      initialAttack: 200,
       initialDecay: 200,
       initialFilterAmount: 200,
-      // onValueChange: (value) => {
-      //   this.envelopeFilterOffset =
-      //     exponetialEase(value) * this.envelopeFrequencyOffset;
-      //   this.filter.frequency.setValueAtTime(
-      //     this.filterCutoff + this.envelopeFilterOffset,
-      //     this.audioContext.currentTime
-      //   );
-      // },
+      onValueChange: (value) => {
+        this.envelopeFilterOffset =
+          exponetialEase(value) * this.envelopeFrequencyOffset;
+        this.filter.frequency.setValueAtTime(
+          this.filterCutoff + this.envelopeFilterOffset,
+          this.audioContext.currentTime
+        );
+      },
     });
 
     this.gainNodes = [
@@ -213,15 +186,12 @@ class SmorSynth extends EventTarget {
   setFilterResonance(value) {
     this.filter.Q.setValueAtTime(value, this.audioContext.currentTime);
   }
-  setEnvelopeAttack(value) {
-    this.envelope.setAttack(value);
-  }
   setEnvelopeDecay(value) {
     this.envelope.setDecay(value);
   }
   setEnvelopeFrequencyOffset(freq) {
-    this.envelope.setFilterAmount(freq);
-    // this.envelopeFrequencyOffset = freq;
+    // this.envelope.setFilterAmount(freq);
+    this.envelopeFrequencyOffset = freq;
   }
   getSquareOscillator() {
     return this.gainNodes[0];
@@ -256,10 +226,8 @@ function init() {
   // Oscillator analyers
   const { analyser: squareAnalyser, setFrequency: setSquareAnalyserFrequency } =
     createOscilloscope(audioContext, document.getElementById("square-canvas"));
-  const { analyser: sawAnalyser, setFrequency: setSawAnalyzerFrequency } = createOscilloscope(
-    audioContext,
-    document.getElementById("saw-canvas")
-  );
+  const { analyser: sawAnalyser, setFrequency: setSawAnalyzerFrequency } =
+    createOscilloscope(audioContext, document.getElementById("saw-canvas"));
 
   const synth = new SmorSynth(audioContext, analyser);
 
@@ -283,7 +251,6 @@ function init() {
     3: "filter-resonance",
     6: "filter-envelope-decay",
     7: "filter-envelope-amount",
-    8: "filter-envelope-attack",
   };
 
   for (const knob of Object.entries(knobMapping)) {
@@ -313,8 +280,6 @@ function init() {
       synth.setFilterResonance(25 * (value / 127));
     } else if (control === 6) {
       synth.setEnvelopeDecay((value / 127) * 1000);
-    } else if (control === 8) {
-      synth.setEnvelopeAttack((value / 127) * 1000);
     } else if (control === 7) {
       synth.setEnvelopeFrequencyOffset((value / 127) * 5000);
     } else {
@@ -485,7 +450,7 @@ function createOscilloscope(audioContext, canvas) {
     const period = Math.round(sampleRate / noteFrequency);
     const offsetX = sampleTime % period;
     const startIndex = period - offsetX;
-    const periodsToShow = Math.max(Math.floor(bufferLength / period) - 1, 1);
+    const periodsToShow = 1; //Math.max(Math.floor(bufferLength / period) - 1, 1);
 
     const endIndex = startIndex + periodsToShow * period;
 
