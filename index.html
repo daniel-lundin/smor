@@ -65,7 +65,7 @@
         grid-row: 1;
         text-align: right;
       }
-      .grid__square {
+      .grid__oscillator {
         grid-column: 1;
         grid-row: 2;
       }
@@ -239,28 +239,40 @@
           </svg>
         </div>
 
-        <div class="grid__square box">
-          <h3>Square</h3>
-          <canvas id="square-canvas" class="tone-view"></canvas>
+        <div class="grid__oscillator box">
+          <h3>OSC</h3>
+          <canvas id="oscillator-canvas" class="tone-view"></canvas>
           <div class="parameter">
-            <input id="square-amplitude" min="0" max="100" type="range" />
-            <label for="square-amplitude">Amplitude</label>
+            <label for="oscilator-mix">SAW</label>
+            <input id="oscillator-mix" min="0" max="127" type="range" />
+            <label for="oscilator-mix">SQUARE</label>
           </div>
           <div class="parameter">
-            <input id="square-detune" min="0" max="100" type="range" />
-            <label for="square-detune">Detune</label>
+            <input id="oscillator-detune" min="0" max="127" type="range" />
+            <label for="oscillator-detune">Detune</label>
+          </div>
+          <div class="parameter">
+            <input id="oscillator-glide" value="0" min="0" max="127" type="range" />
+            <label for="oscillator-glide">Glide</label>
           </div>
         </div>
         <div class="grid__saw box">
-          <h3>Saw</h3>
-          <canvas id="saw-canvas" class="tone-view"></canvas>
+          <h3>LFO</h3>
           <div class="parameter">
-            <input id="saw-amplitude" min="0" max="100" type="range" />
-            <label for="saw-amplitude">Amplitude</label>
+            <input id="lfo-frequency" min="0" max="127" type="range" />
+            <label for="lfo-frequency">FREQ</label>
           </div>
           <div class="parameter">
-            <input id="saw-detune" min="0" max="100" type="range" />
-            <label for="saw-detune">Detune</label>
+            <input id="lfo-cutoff" min="0" max="127" type="range" />
+            <label for="lf0-cutoff">FILTER CUTOFF</label>
+          </div>
+          <div class="parameter">
+            <input id="lfo-resonance" min="0" max="127" type="range" />
+            <label for="lf-resonance">FILTER RES</label>
+          </div>
+          <div class="parameter">
+            <input id="lfo-oscillator" min="0" max="127" type="range" />
+            <label for="lf-oscillator">OSC GAIN</label>
           </div>
         </div>
         <div class="grid__filter box">
@@ -268,11 +280,11 @@
           <canvas id="filter-response"></canvas>
           <div class="parameter-row">
             <div class="parameter">
-              <input id="filter-cutoff" min="0" max="100" type="range" />
+              <input id="filter-cutoff" min="0" max="127" type="range" />
               <label for="filter-cutoff">Cutoff</label>
             </div>
             <div class="parameter">
-              <input id="filter-resonance" min="0" max="100" type="range" />
+              <input id="filter-resonance" min="0" max="127" type="range" />
               <label for="filter-resonance">Resonance</label>
             </div>
           </div>
@@ -281,7 +293,7 @@
               <input
                 id="filter-envelope-decay"
                 min="0"
-                max="100"
+                max="127"
                 type="range"
               />
               <label for="filter-envelop-decay">Envelope decay</label>
