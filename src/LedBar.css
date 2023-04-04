@@ -1,0 +1,19 @@
+.led-bar {
+    display: flex;
+    width: 140px;
+    background: var(--gray-color);
+    height: 20px;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.led-bar__bar {
+    width: 8px;
+    height: 14px;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.led-bar__bar--on {
+    background-color: #fa5252;
+    box-shadow: 0px 0px 5px 2px #fa52528f;
+}

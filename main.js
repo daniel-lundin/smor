@@ -254,10 +254,10 @@ class LFO extends EventTarget {
     this.lfo.connect(this.lfoCutOffGain);
     this.lfoCutOffGain.connect(lowpassFilter.frequency);
 
-    // this.lfoResonanceGain = this.audioContext.createGain();
-    // this.lfoResonanceGain.gain.setValueAtTime(0, this.audioContext.currentTime);
-    // this.lfo.connect(this.lfoResonanceGain);
-    // this.lfoResonanceGain.connect(this.filter.Q);
+    // this.lfoFrequencyGain = this.audioContext.createGain();
+    // this.lfoFrequencyGain.gain.setValueAtTime(0, this.audioContext.currentTime);
+    // this.lfo.connect(this.lfoFrequencyGain);
+    //this.lfoResonanceGain.connect(this.oscillator.Q);
 
     // this.lfoOscillatorGain = this.audioContext.createGain();
     // this.lfoResonanceGain.gain.setValueAtTime(0, this.audioContext.currentTime);
