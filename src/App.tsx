@@ -37,9 +37,11 @@ function Parameter({
 const controls = [
   ["OSC SHAPE", ParameterType.OSCILLATOR_MIX],
   ["DETUNE", ParameterType.OSCILLATOR_DETUNE],
+  ["COARSE", ParameterType.OSCILLATOR_COARSE],
   ["CUTOFF", ParameterType.FILTER_CUTOFF],
   ["RESONANCE", ParameterType.FILTER_RESONANCE],
   ["CONTOUR", ParameterType.FILTER_CONTOUR],
+  // ["FEEDBACK", ParameterType.FILTER_FEEDBACK],
   ["ATTACK", ParameterType.FILTER_ENVELOPE_ATTACK],
   ["DECAY", ParameterType.FILTER_ENVELOPE_DECAY],
   // ["ENV AMOUNT", ParameterType.FILTER_ENVELOPE_AMOUNT],
@@ -117,6 +119,12 @@ function App({ smor }: { smor: SmorSynth }) {
               <Parameter
                 label="DETUNE"
                 parameterValue={parameters[ParameterType.OSCILLATOR_DETUNE]}
+                selectedControl={controls[selectedControl][0] as string}
+                single
+              />
+              <Parameter
+                label="COARSE"
+                parameterValue={parameters[ParameterType.OSCILLATOR_COARSE]}
                 selectedControl={controls[selectedControl][0] as string}
                 single
               />

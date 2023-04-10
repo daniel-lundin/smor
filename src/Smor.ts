@@ -6,9 +6,11 @@ export enum ParameterType {
   OSCILLATOR_FREQUENCY,
   OSCILLATOR_MIX,
   OSCILLATOR_DETUNE,
+  OSCILLATOR_COARSE,
   FILTER_CUTOFF,
   FILTER_RESONANCE,
   FILTER_CONTOUR,
+  FILTER_FEEDBACK,
   FILTER_ENVELOPE_DECAY,
   FILTER_ENVELOPE_ATTACK,
   FILTER_ENVELOPE_ENERGY,
@@ -33,7 +35,7 @@ function createOscillator(
   return oscillator;
 }
 
-class SpringEnvelope {
+export class SpringEnvelope {
   audioContext: AudioContext;
   energy: number;
   stiffness: number;
@@ -103,7 +105,7 @@ class SpringEnvelope {
   }
 }
 
-function createAREnvelope({
+function createADEnvelope({
   audioContext,
   initialAttack,
   initialDecay,
@@ -135,14 +137,17 @@ function createAREnvelope({
 
     triggerEnvelope() {
       gainNode.gain.cancelScheduledValues(audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(
         1,
         audioContext.currentTime + attack
       );
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.001,
-        audioContext.currentTime + decay
-      );
+      if (decay) {
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.001,
+          audioContext.currentTime + attack + decay
+        );
+      }
     },
 
     release() {
@@ -178,7 +183,7 @@ export class Oscillator {
     this.oscillatorMix = 0.5;
     this.oscillatorGlide = 0;
     this.oscillatorDetune = 0.5;
-    this.oscillatorCoarseTune = 0;
+    this.oscillatorCoarseTune = 0.5;
     this.oscillatorOutput = this.audioContext.createGain();
     this.gainNodes = [
       this.audioContext.createGain(),
@@ -220,11 +225,23 @@ export class Oscillator {
     this.oscillatorDetune = value;
     if (this.oscillators) {
       this.oscillators[0].detune.setValueAtTime(
-        (value - 0.5) * 100,
+        -(this.oscillatorDetune - 0.5) * 100 +
+          (this.oscillatorCoarseTune - 0.5) * 2400,
         this.audioContext.currentTime
       );
       this.oscillators[1].detune.setValueAtTime(
-        -(value - 0.5) * 100,
+        (value - 0.5) * 100,
+        this.audioContext.currentTime
+      );
+    }
+  }
+
+  setOscillatorCoarse(value: number) {
+    this.parameterEventEmitter(ParameterType.OSCILLATOR_COARSE, value);
+    this.oscillatorCoarseTune = value;
+    if (this.oscillators) {
+      this.oscillators[0].detune.setValueAtTime(
+        -(this.oscillatorDetune - 0.5) * 100 + (value - 0.5) * 2400,
         this.audioContext.currentTime
       );
     }
@@ -244,7 +261,8 @@ export class Oscillator {
         createOscillator(
           this.audioContext,
           frequency,
-          -(this.oscillatorDetune - 0.5) * 100,
+          -(this.oscillatorDetune - 0.5) * 100 +
+            (this.oscillatorCoarseTune - 0.5) * 2400,
           "square"
         ),
         createOscillator(
@@ -301,6 +319,7 @@ class LowPassFilter {
   feedback: number;
   filter: BiquadFilterNode;
   contourController: GainNode;
+  feedbackGain: GainNode;
   cutoffFrequency: number;
   envelopeAttack: number;
   envelopeDecay: number;
@@ -335,7 +354,12 @@ class LowPassFilter {
     this.contourController = audioContext.createGain();
     this.contourController.connect(this.filter.frequency);
 
-    this.envelope = createAREnvelope({
+    this.feedbackGain = audioContext.createGain();
+    this.feedbackGain.gain.value = 0;
+    this.filter.connect(this.feedbackGain);
+    this.feedbackGain.connect(this.filter);
+
+    this.envelope = createADEnvelope({
       audioContext,
       initialAttack: 0,
       initialDecay: 0,
@@ -348,6 +372,7 @@ class LowPassFilter {
     this.parameterEventEmitter(ParameterType.FILTER_CUTOFF, this.cutoff);
     this.parameterEventEmitter(ParameterType.FILTER_RESONANCE, this.resonance);
     this.parameterEventEmitter(ParameterType.FILTER_CONTOUR, this.contour);
+    this.parameterEventEmitter(ParameterType.FILTER_FEEDBACK, this.feedback);
     this.parameterEventEmitter(
       ParameterType.FILTER_ENVELOPE_ATTACK,
       this.envelopeAttack
@@ -389,14 +414,16 @@ class LowPassFilter {
   setContour(value: number) {
     this.contour = value;
     this.parameterEventEmitter(ParameterType.FILTER_CONTOUR, value);
-    // Max is 5 octaves
-    //
-    console.log("setting contour to", this.cutoffFrequency * value * 5);
     this.contourController.gain.setValueAtTime(
       this.cutoffFrequency * value * 100,
       this.audioContext.currentTime
     );
-    // const offset = value * 10000 - 5000;
+  }
+
+  setFeedback(value: number) {
+    this.feedback = value;
+    this.parameterEventEmitter(ParameterType.FILTER_FEEDBACK, value);
+    this.feedbackGain.gain.setValueAtTime(value, this.audioContext.currentTime);
   }
 
   setEnvelopeDecay(value: number) {
@@ -483,6 +510,9 @@ export class SmorSynth extends EventTarget {
     [ParameterType.OSCILLATOR_DETUNE]: (value: number) => {
       this.oscillator.setOscillatorDetune(value);
     },
+    [ParameterType.OSCILLATOR_COARSE]: (value: number) => {
+      this.oscillator.setOscillatorCoarse(value);
+    },
     [ParameterType.OSCILLATOR_FREQUENCY]: (_: number) => {
       // this.oscillator.setOscillatorDetune(value);
     },
@@ -494,6 +524,9 @@ export class SmorSynth extends EventTarget {
     },
     [ParameterType.FILTER_CONTOUR]: (value: number) => {
       this.lowpassFilter.setContour(value);
+    },
+    [ParameterType.FILTER_FEEDBACK]: (value: number) => {
+      this.lowpassFilter.setFeedback(value);
     },
     [ParameterType.FILTER_ENVELOPE_ATTACK]: (value: number) => {
       this.lowpassFilter.setEnvelopeAttack(value);
