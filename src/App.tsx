@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import ControlGroup from "./ControlGroup";
 import LedBar from "./LedBar";
-import { drawFrequencyResponse, ParameterType, SmorSynth } from "./Smor";
+import {
+  createOscilloscope,
+  drawFrequencyResponse,
+  ParameterType,
+  SmorSynth,
+} from "./Smor";
 import SmorLogo from "./SmorLogo";
 import { Knob } from "react-rotary-knob";
 import { useMidi } from "./MIDIControl";
@@ -29,7 +34,7 @@ function Parameter({
         />
         {label}
       </label>
-      <LedBar value={parameterValue} single={single}/>
+      <LedBar value={parameterValue} single={single} />
     </div>
   );
 }
@@ -106,7 +111,6 @@ function App({ smor }: { smor: SmorSynth }) {
 
   return (
     <div className="synth">
-      <FrequencyMeter smor={smor}/>
       <div className="smor">
         <div className="smor__row">
           <div>
@@ -181,9 +185,7 @@ function App({ smor }: { smor: SmorSynth }) {
               />
               <Parameter
                 label="DECAY"
-                parameterValue={
-                  parameters[ParameterType.FILTER_ENVELOPE_DECAY]
-                }
+                parameterValue={parameters[ParameterType.FILTER_ENVELOPE_DECAY]}
                 selectedControl={controls[selectedControl][0] as string}
               />
             </ControlGroup>
@@ -205,6 +207,10 @@ function App({ smor }: { smor: SmorSynth }) {
             </div>
           </div>
         </div>
+        <div className="smor__row">
+          <Oscilloscope smor={smor} />
+          <FrequencyMeter smor={smor} />
+        </div>
       </div>
     </div>
   );
@@ -214,6 +220,7 @@ function FrequencyMeter({ smor }: { smor: SmorSynth }) {
   const canvas = useRef(null);
 
   useEffect(() => {
+    if (!canvas.current) return;
     const { analyser, stop } = drawFrequencyResponse(
       canvas.current,
       smor.audioContext
@@ -222,6 +229,33 @@ function FrequencyMeter({ smor }: { smor: SmorSynth }) {
     smor.lowpassFilter.filter.connect(analyser);
 
     return () => stop();
+  }, [smor]);
+
+  return <canvas ref={canvas}></canvas>;
+}
+
+function Oscilloscope({ smor }: { smor: SmorSynth }) {
+  const canvas = useRef(null);
+
+  useEffect(() => {
+    if (!canvas.current) return;
+    const { analyser, setFrequency } = createOscilloscope(
+      canvas.current,
+      smor.audioContext
+    );
+
+    smor.oscillator.connect(analyser);
+    const eventListener = ((event: CustomEvent) => {
+      if (event.detail.parameterType === ParameterType.OSCILLATOR_FREQUENCY) {
+        setFrequency(event.detail.value);
+      }
+    }) as EventListener;
+
+    smor.addEventListener("parameterChange", eventListener);
+
+    return () => {
+      smor.removeEventListener("parameterChange", eventListener);
+    };
   }, [smor]);
 
   return <canvas ref={canvas}></canvas>;
