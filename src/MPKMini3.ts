@@ -160,5 +160,11 @@ export function setKnobsToRelative(preset: Uint8Array) {
   preset[offsets.COMMAND] = CMD_WRITE_DATA;
   preset[offsets.KNOB_1_MODE] = 1;
   preset[offsets.KNOB_2_MODE] = 1;
+  preset[offsets.KNOB_3_MODE] = 1;
+  preset[offsets.KNOB_4_MODE] = 1;
+  preset[offsets.KNOB_5_MODE] = 1;
+  preset[offsets.KNOB_6_MODE] = 1;
+  preset[offsets.KNOB_7_MODE] = 1;
+  preset[offsets.KNOB_8_MODE] = 1;
   return preset;
 }

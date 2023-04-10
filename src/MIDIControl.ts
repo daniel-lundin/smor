@@ -133,32 +133,23 @@ export default function connectMidi(smor: SmorSynth) {
 }
 
 export function useMidi({
-  onKnob1Change,
-  onKnob2Change,
+  onKnobChange,
   onNoteDown,
   onNoteUp,
 }: {
-  onKnob1Change: (arg0: number) => void;
-  onKnob2Change: (arg0: number) => void;
+  onKnobChange: (knob: number, value: number) => void;
   onNoteDown: (note: number) => void;
   onNoteUp: (note: number) => void;
 }) {
-  const currentKnob1Change = React.useRef(onKnob1Change);
-  const currentKnob2Change = React.useRef(onKnob2Change);
-  currentKnob1Change.current = onKnob1Change;
-  currentKnob2Change.current = onKnob2Change;
+  const currentKnobChange = React.useRef(onKnobChange);
+  currentKnobChange.current = onKnobChange;
 
   React.useEffect(() => {
     return initMIDIControls({
       onNoteUp,
       onNoteDown,
       onKnobChange: (knob, value) => {
-        if (knob === 0) {
-          currentKnob1Change.current(value);
-        }
-        if (knob === 1) {
-          currentKnob2Change.current(value);
-        }
+          currentKnobChange.current(knob, value);
       },
       onDrumPad: () => {},
     });

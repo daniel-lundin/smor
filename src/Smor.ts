@@ -8,8 +8,12 @@ export enum ParameterType {
   OSCILLATOR_DETUNE,
   FILTER_CUTOFF,
   FILTER_RESONANCE,
+  FILTER_CONTOUR,
   FILTER_ENVELOPE_DECAY,
-  FILTER_ENVELOPE_AMOUNT,
+  FILTER_ENVELOPE_ATTACK,
+  FILTER_ENVELOPE_ENERGY,
+  FILTER_ENVELOPE_STIFFNESS,
+  FILTER_ENVELOPE_DAMPING,
   LFO_FREQUENCY,
   LFO_CUTOFF_GAIN,
   LFO_OSCILLATOR_PITCH,
@@ -29,44 +33,125 @@ function createOscillator(
   return oscillator;
 }
 
-function createDecayEnvelope({
-  onValueChange,
+class SpringEnvelope {
+  audioContext: AudioContext;
+  energy: number;
+  stiffness: number;
+  damping: number;
+  filterFrequency: number;
+  gain: GainNode;
+  source: ConstantSourceNode;
+  scheduledAnimationFrame: number | null;
+  constructor(audioContext: AudioContext) {
+    this.audioContext = audioContext;
+    this.energy = 1;
+    this.stiffness = 1;
+    this.damping = 0.5;
+    this.filterFrequency = 1000;
+    this.gain = audioContext.createGain();
+    this.source = audioContext.createConstantSource();
+    this.source.start();
+    this.source.connect(this.gain);
+    this.scheduledAnimationFrame = null;
+  }
+
+  attack() {
+    const stiffness = Math.max(this.stiffness * 10, 1);
+    const damping = Math.max(this.damping, 0.2);
+    let velocity = (this.energy - 0.5) * 2;
+    console.log("attack", {
+      stiffness,
+      damping,
+      velocity,
+    });
+
+    let tweenValue = 0;
+    let acceleration = 0;
+
+    const tick = () => {
+      const diff = 0 - tweenValue;
+
+      velocity += acceleration;
+      tweenValue += velocity;
+
+      acceleration = diff * (stiffness / 100) - velocity * damping;
+      // equilibrium
+      if (Math.abs(tweenValue) < 0.001 && Math.abs(velocity) < 0.001) {
+        return;
+      }
+
+      const offset = this.filterFrequency * (Math.pow(2, tweenValue) - 1);
+      console.log("offset", tweenValue, offset);
+      this.gain.gain.cancelScheduledValues(this.audioContext.currentTime);
+      this.gain.gain.linearRampToValueAtTime(
+        offset,
+        // tweenValue * 1000,
+        this.audioContext.currentTime + 1
+      );
+      this.scheduledAnimationFrame = requestAnimationFrame(tick);
+    };
+    if (this.scheduledAnimationFrame) {
+      cancelAnimationFrame(this.scheduledAnimationFrame);
+    }
+    this.scheduledAnimationFrame = requestAnimationFrame(tick);
+  }
+
+  release() {}
+
+  setFilterFrequency(frequency: number) {
+    this.filterFrequency = frequency;
+  }
+}
+
+function createAREnvelope({
+  audioContext,
+  initialAttack,
   initialDecay,
 }: {
-  onValueChange: (value: number) => void;
+  audioContext: AudioContext;
+  initialAttack: number;
   initialDecay: number;
 }) {
   let decay = initialDecay;
+  let attack = initialAttack;
+  const constantSource = audioContext.createConstantSource();
+  const gainNode = audioContext.createGain();
+  constantSource.connect(gainNode);
+  constantSource.start();
+  gainNode.gain.value = 0;
 
   return {
+    setAttack(updatedAttack: number) {
+      attack = updatedAttack;
+    },
     setDecay(updatedDecay: number) {
       decay = updatedDecay;
     },
 
     attack() {
-      if (decay === 0) return;
-      let value = 1;
+      if (decay === 0 && attack === 0) return;
+      this.triggerEnvelope();
+    },
 
-      // param.setValue;
-      onValueChange(value);
+    triggerEnvelope() {
+      gainNode.gain.cancelScheduledValues(audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        1,
+        audioContext.currentTime + attack
+      );
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioContext.currentTime + decay
+      );
+    },
 
-      let previousTimestamp = performance.now();
-      function tween(timestamp: number) {
-        const timediff = timestamp - previousTimestamp;
-        const valueDecrease = timediff / decay;
-
-        value -= valueDecrease;
-
-        if (value > 0) {
-          onValueChange(value);
-          previousTimestamp = timestamp;
-          requestAnimationFrame(tween);
-        } else {
-          onValueChange(0);
-        }
-      }
-
-      requestAnimationFrame(tween);
+    release() {
+      //this.triggerEnvelope();
+      // gainNode.gain.cancelScheduledValues(audioContext.currentTime);
+      // gainNode.gain.setValueAtTime(0.001, audioContext.currentTime);
+    },
+    connect(audioNode: AudioNode) {
+      gainNode.connect(audioNode);
     },
   };
 }
@@ -77,6 +162,7 @@ export class Oscillator {
   oscillatorMix: number;
   oscillatorGlide: number;
   oscillatorDetune: number;
+  oscillatorCoarseTune: number;
   oscillatorOutput: GainNode;
   gainNodes: GainNode[];
   keysPressed: number[];
@@ -91,7 +177,7 @@ export class Oscillator {
     this.oscillators = null;
     this.oscillatorMix = 0.5;
     this.oscillatorGlide = 0;
-    this.oscillatorDetune = 0;
+    this.oscillatorDetune = 0.5;
     this.oscillatorCoarseTune = 0;
     this.oscillatorOutput = this.audioContext.createGain();
     this.gainNodes = [
@@ -106,6 +192,17 @@ export class Oscillator {
       gainNode.connect(this.oscillatorOutput);
     });
     this.keysPressed = [];
+  }
+
+  notifyParameters() {
+    this.parameterEventEmitter(
+      ParameterType.OSCILLATOR_MIX,
+      this.oscillatorMix
+    );
+    this.parameterEventEmitter(
+      ParameterType.OSCILLATOR_DETUNE,
+      this.oscillatorDetune
+    );
   }
 
   setOscillatorMix(value: number) {
@@ -123,11 +220,11 @@ export class Oscillator {
     this.oscillatorDetune = value;
     if (this.oscillators) {
       this.oscillators[0].detune.setValueAtTime(
-        value,
+        (value - 0.5) * 100,
         this.audioContext.currentTime
       );
       this.oscillators[1].detune.setValueAtTime(
-        -value,
+        -(value - 0.5) * 100,
         this.audioContext.currentTime
       );
     }
@@ -147,13 +244,13 @@ export class Oscillator {
         createOscillator(
           this.audioContext,
           frequency,
-          -this.oscillatorDetune,
+          -(this.oscillatorDetune - 0.5) * 100,
           "square"
         ),
         createOscillator(
           this.audioContext,
           frequency,
-          this.oscillatorDetune,
+          (this.oscillatorDetune - 0.5) * 100,
           "sawtooth"
         ),
       ];
@@ -198,11 +295,23 @@ export class Oscillator {
 
 class LowPassFilter {
   audioContext: AudioContext;
-  filterCutoff: number;
+  cutoff: number;
+  resonance: number;
+  contour: number;
+  feedback: number;
   filter: BiquadFilterNode;
-  envelopeFilterOffset: number;
-  envelopeFrequencyOffset: number;
-  envelope: { setDecay: (arg: number) => void; attack: () => void };
+  contourController: GainNode;
+  cutoffFrequency: number;
+  envelopeAttack: number;
+  envelopeDecay: number;
+  envelope: {
+    setAttack: (arg: number) => void;
+    setDecay: (arg: number) => void;
+    attack: () => void;
+    release: () => void;
+    connect: (audioNode: AudioNode) => void;
+  };
+  // envelope: SpringEnvelope;
   parameterEventEmitter: (arg0: ParameterType, arg1: number) => void;
 
   constructor(
@@ -211,39 +320,51 @@ class LowPassFilter {
   ) {
     this.parameterEventEmitter = parameterEventEmitter;
     this.audioContext = audioContext;
-    this.filterCutoff = 1000;
-    this.filter = this.audioContext.createBiquadFilter();
+    this.cutoff = 0.4;
+    this.resonance = 0.1;
+    this.contour = 0.0;
+    this.envelopeAttack = 0.0;
+    this.envelopeDecay = 0.0;
+
+    this.filter = audioContext.createBiquadFilter();
     this.filter.type = "lowpass";
-    this.filter.frequency.setValueAtTime(
-      this.filterCutoff,
-      this.audioContext.currentTime
-    );
-    this.filter.gain.setValueAtTime(25, audioContext.currentTime);
 
-    this.envelopeFilterOffset = 0;
-    this.envelopeFrequencyOffset = 5000;
+    this.setCutoff(this.cutoff);
+    this.setResonance(this.resonance);
 
-    this.envelope = createDecayEnvelope({
-      initialDecay: 200,
-      onValueChange: (value) => {
-        this.envelopeFilterOffset =
-          exponetialEase(value) * this.envelopeFrequencyOffset;
-        this.filter.frequency.setValueAtTime(
-          Math.max(
-            Math.min(this.filterCutoff + this.envelopeFilterOffset, 20000),
-            0
-          ),
-          this.audioContext.currentTime
-        );
-      },
+    this.contourController = audioContext.createGain();
+    this.contourController.connect(this.filter.frequency);
+
+    this.envelope = createAREnvelope({
+      audioContext,
+      initialAttack: 0,
+      initialDecay: 0,
     });
+
+    this.envelope.connect(this.contourController);
+  }
+
+  notifyParameters() {
+    this.parameterEventEmitter(ParameterType.FILTER_CUTOFF, this.cutoff);
+    this.parameterEventEmitter(ParameterType.FILTER_RESONANCE, this.resonance);
+    this.parameterEventEmitter(ParameterType.FILTER_CONTOUR, this.contour);
+    this.parameterEventEmitter(
+      ParameterType.FILTER_ENVELOPE_ATTACK,
+      this.envelopeAttack
+    );
+    this.parameterEventEmitter(
+      ParameterType.FILTER_ENVELOPE_DECAY,
+      this.envelopeDecay
+    );
   }
 
   attack() {
     this.envelope.attack();
   }
 
-  release() {}
+  release() {
+    this.envelope.release();
+  }
 
   setCutoff(value: number) {
     const easedValue = exponetialEase(value);
@@ -253,30 +374,57 @@ class LowPassFilter {
 
     this.parameterEventEmitter(ParameterType.FILTER_CUTOFF, value);
 
-    this.filterCutoff = freq;
-    this.filter.frequency.setValueAtTime(
-      freq + this.envelopeFilterOffset,
-      this.audioContext.currentTime
-    );
+    this.cutoffFrequency = freq;
+    this.filter.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+    // this.envelope.setFilterFrequency(freq);
   }
 
   setResonance(value: number) {
-    const resonance = value * 25;
+    const resonance = value * 15;
 
     this.parameterEventEmitter(ParameterType.FILTER_RESONANCE, value);
     this.filter.Q.setValueAtTime(resonance, this.audioContext.currentTime);
   }
 
-  setEnvelopeDecay(value: number) {
-    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_DECAY, value);
-    const ms = value * 1000;
-    this.envelope.setDecay(ms);
+  setContour(value: number) {
+    this.contour = value;
+    this.parameterEventEmitter(ParameterType.FILTER_CONTOUR, value);
+    // Max is 5 octaves
+    //
+    console.log("setting contour to", this.cutoffFrequency * value * 5);
+    this.contourController.gain.setValueAtTime(
+      this.cutoffFrequency * value * 100,
+      this.audioContext.currentTime
+    );
+    // const offset = value * 10000 - 5000;
   }
 
-  setEnvelopeAmount(value: number) {
-    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_AMOUNT, value);
-    const offset = value * 10000 - 5000;
-    this.envelopeFrequencyOffset = offset;
+  setEnvelopeDecay(value: number) {
+    this.envelopeDecay = value;
+    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_DECAY, value);
+    const ms = value * 1000;
+    this.envelope.setDecay(value);
+  }
+
+  setEnvelopeAttack(value: number) {
+    this.envelopeAttack = value;
+    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_ATTACK, value);
+    const ms = value * 1000;
+    this.envelope.setAttack(value);
+  }
+
+  setEnvelopeEnergy(value: number) {
+    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_ENERGY, value);
+    this.envelope.energy = value;
+  }
+
+  setEnvelopeStiffness(value: number) {
+    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_STIFFNESS, value);
+    this.envelope.stiffness = value;
+  }
+  setEnvelopeDamping(value: number) {
+    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_DAMPING, value);
+    this.envelope.damping = value;
   }
 }
 
@@ -323,6 +471,7 @@ class LFO {
 }
 
 export class SmorSynth extends EventTarget {
+  audioContext: AudioContext;
   oscillator: Oscillator;
   lowpassFilter: LowPassFilter;
   lfo: LFO;
@@ -343,14 +492,24 @@ export class SmorSynth extends EventTarget {
     [ParameterType.FILTER_RESONANCE]: (value: number) => {
       this.lowpassFilter.setResonance(value);
     },
+    [ParameterType.FILTER_CONTOUR]: (value: number) => {
+      this.lowpassFilter.setContour(value);
+    },
+    [ParameterType.FILTER_ENVELOPE_ATTACK]: (value: number) => {
+      this.lowpassFilter.setEnvelopeAttack(value);
+    },
     [ParameterType.FILTER_ENVELOPE_DECAY]: (value: number) => {
       this.lowpassFilter.setEnvelopeDecay(value);
     },
-    [ParameterType.FILTER_ENVELOPE_AMOUNT]: (value: number) => {
-      this.lowpassFilter.setEnvelopeAmount(value);
+    // Spring envelop
+    [ParameterType.FILTER_ENVELOPE_ENERGY]: (value: number) => {
+      this.lowpassFilter.setEnvelopeEnergy(value);
     },
-    [ParameterType.FILTER_ENVELOPE_AMOUNT]: (value: number) => {
-      this.lowpassFilter.setEnvelopeAmount(value);
+    [ParameterType.FILTER_ENVELOPE_STIFFNESS]: (value: number) => {
+      this.lowpassFilter.setEnvelopeStiffness(value);
+    },
+    [ParameterType.FILTER_ENVELOPE_DAMPING]: (value: number) => {
+      this.lowpassFilter.setEnvelopeDamping(value);
     },
     [ParameterType.LFO_FREQUENCY]: (value: number) => {
       this.lfo.setFrequency(value);
@@ -365,6 +524,7 @@ export class SmorSynth extends EventTarget {
   constructor(audioContext: AudioContext) {
     super();
     const synth = this;
+    this.audioContext = audioContext;
 
     function parameterEventEmitter(
       parameterType: ParameterType,
@@ -391,6 +551,11 @@ export class SmorSynth extends EventTarget {
     this.oscillator.connect(this.lowpassFilter.filter);
   }
 
+  notifyParameters() {
+    this.oscillator.notifyParameters();
+    this.lowpassFilter.notifyParameters();
+  }
+
   attack(MIDINote: number) {
     console.log("attack note");
     this.oscillator.attack(MIDINote);
@@ -402,7 +567,10 @@ export class SmorSynth extends EventTarget {
   }
 
   connect(output: AudioNode) {
-    this.lowpassFilter.filter.connect(output);
+    const gain = this.audioContext.createGain();
+    gain.gain.value = 0.5;
+    this.lowpassFilter.filter.connect(gain);
+    gain.connect(output);
   }
 }
 
@@ -595,38 +763,6 @@ export class SmorSynth extends EventTarget {
 //   { once: true }
 // );
 
-function initMIDI({ onNoteUp, onNoteDown, onKnobChange, onDrumPad }) {
-  if (!navigator.requestMIDIAccess) {
-    console.warn("No midi access");
-    return;
-  }
-  navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
-  function onMIDISuccess(midiAccess) {
-    for (const input of midiAccess.inputs.values()) {
-      input.onmidimessage = getMIDIMessage;
-    }
-  }
-
-  function getMIDIMessage(midiMessage) {
-    if (midiMessage.data[0] === 144) {
-      onNoteDown(midiMessage.data[1], midiMessage.data[2]);
-    } else if (midiMessage.data[0] === 128) {
-      onNoteUp(midiMessage.data[1]);
-    } else if (midiMessage.data[0] === 176) {
-      const value = midiMessage.data[2];
-      const knobIndex = midiMessage.data[1] - 70;
-      onKnobChange(knobIndex, value);
-    } else if (midiMessage.data[0] === 201) {
-      onDrumPad(midiMessage.data[1]);
-    } else {
-      console.log("unknown message", midiMessage.data);
-    }
-  }
-  function onMIDIFailure(error) {
-    console.log("failed to initialize midi", error);
-  }
-}
-
 // initButton.addEventListener("click", function () {
 //   init();
 //   return;
@@ -754,6 +890,62 @@ function createOscilloscope(
     analyser,
     setFrequency: (newFrequency: number) => {
       noteFrequency = newFrequency;
+    },
+  };
+}
+
+export function drawFrequencyResponse(canvas, audioContext) {
+  const analyser = audioContext.createAnalyser();
+  analyser.fftSize = 4096;
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+
+  const canvasCtx = canvas.getContext("2d");
+  if (canvasCtx === null) {
+    throw new Error("Unable to get canvas context");
+  }
+  let stopped = false;
+
+  function draw() {
+    if (canvasCtx === null) return;
+    analyser.getByteFrequencyData(dataArray);
+
+    canvasCtx.fillStyle = "#333";
+    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+    canvasCtx.lineWidth = 2;
+    canvasCtx.strokeStyle = "#F2C94C";
+    canvasCtx.shadowColor = "#F2C94C";
+    canvasCtx.shadowBlur = 5;
+
+    canvasCtx.beginPath();
+
+    const sliceWidth = (canvas.width * 1.0) / bufferLength;
+    let x = 0;
+
+    for (let i = 0; i < bufferLength; ++i) {
+      const y = (1 - dataArray[i] / 256) * canvas.height;
+
+      if (i === 0) {
+        canvasCtx.moveTo(x, y);
+      } else {
+        canvasCtx.lineTo(x, y);
+      }
+
+      x += sliceWidth;
+    }
+
+    canvasCtx.stroke();
+    if (!stopped) {
+      requestAnimationFrame(draw);
+    }
+  }
+
+  draw();
+  return {
+    analyser,
+    stop: () => {
+      stopped = true;
     },
   };
 }

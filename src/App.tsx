@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import ControlGroup from "./ControlGroup";
 import LedBar from "./LedBar";
-import { ParameterType, SmorSynth } from "./Smor";
+import { drawFrequencyResponse, ParameterType, SmorSynth } from "./Smor";
 import SmorLogo from "./SmorLogo";
 import { Knob } from "react-rotary-knob";
 import { useMidi } from "./MIDIControl";
@@ -11,10 +11,12 @@ function Parameter({
   label,
   parameterValue,
   selectedControl,
+  single,
 }: {
   label: string;
   parameterValue: number;
   selectedControl: string;
+  single?: boolean;
 }) {
   return (
     <div className="parameter">
@@ -27,7 +29,7 @@ function Parameter({
         />
         {label}
       </label>
-      <LedBar value={parameterValue} />
+      <LedBar value={parameterValue} single={single}/>
     </div>
   );
 }
@@ -37,8 +39,13 @@ const controls = [
   ["DETUNE", ParameterType.OSCILLATOR_DETUNE],
   ["CUTOFF", ParameterType.FILTER_CUTOFF],
   ["RESONANCE", ParameterType.FILTER_RESONANCE],
-  ["ATT/DECAY", ParameterType.FILTER_ENVELOPE_DECAY],
-  ["ENV AMOUNT", ParameterType.FILTER_ENVELOPE_AMOUNT],
+  ["CONTOUR", ParameterType.FILTER_CONTOUR],
+  ["ATTACK", ParameterType.FILTER_ENVELOPE_ATTACK],
+  ["DECAY", ParameterType.FILTER_ENVELOPE_DECAY],
+  // ["ENV AMOUNT", ParameterType.FILTER_ENVELOPE_AMOUNT],
+  ["ENERGY", ParameterType.FILTER_ENVELOPE_ENERGY],
+  ["STIFFNESS", ParameterType.FILTER_ENVELOPE_STIFFNESS],
+  ["DAMPING", ParameterType.FILTER_ENVELOPE_DAMPING],
   ["FREQUENCY", ParameterType.LFO_FREQUENCY],
   ["FILTER", ParameterType.LFO_CUTOFF_GAIN],
 ];
@@ -61,33 +68,14 @@ function App({ smor }: { smor: SmorSynth }) {
   }
 
   useMidi({
-    onKnob1Change: (value: number) => {
-      if (value === 1) {
-        setSelectedControl((control) => (control + 1) % controls.length);
-      }
-      if (value === 127) {
-        setSelectedControl(
-          (control) => (control - 1 + controls.length) % controls.length
-        );
-      }
-    },
-    onKnob2Change: (value) => {
-      if (value === 1) {
-        const currentParameter = controls[selectedControl][1] as ParameterType;
-        const updatedValue = Math.min(
-          (parameters[currentParameter] || 0) + 0.01,
-          1
-        );
-        smor.parameters[currentParameter](updatedValue);
-      }
-      if (value === 127) {
-        const currentParameter = controls[selectedControl][1] as ParameterType;
-        const updatedValue = Math.max(
-          (parameters[currentParameter] || 0) - 0.01,
-          0
-        );
-        smor.parameters[currentParameter](updatedValue);
-      }
+    onKnobChange: (knob: number, value: number) => {
+      const currentParameter = controls[knob][1] as ParameterType;
+      const delta = value === 1 ? 0.01 : -0.01;
+      const updatedValue = Math.max(
+        Math.min((parameters[currentParameter] || 0) + delta, 1),
+        0
+      );
+      smor.parameters[currentParameter](updatedValue);
     },
     onNoteDown: (note: number) => {
       smor.attack(note);
@@ -110,11 +98,13 @@ function App({ smor }: { smor: SmorSynth }) {
     }) as EventListener;
 
     smor.addEventListener("parameterChange", eventListener);
+    smor.notifyParameters();
     return () => smor.removeEventListener("parameterChange", eventListener);
   }, [smor]);
 
   return (
     <div className="synth">
+      <FrequencyMeter smor={smor}/>
       <div className="smor">
         <div className="smor__row">
           <div>
@@ -128,6 +118,7 @@ function App({ smor }: { smor: SmorSynth }) {
                 label="DETUNE"
                 parameterValue={parameters[ParameterType.OSCILLATOR_DETUNE]}
                 selectedControl={controls[selectedControl][0] as string}
+                single
               />
             </ControlGroup>
           </div>
@@ -155,15 +146,8 @@ function App({ smor }: { smor: SmorSynth }) {
                 selectedControl={controls[selectedControl][0] as string}
               />
               <Parameter
-                label="ATT/DECAY"
-                parameterValue={parameters[ParameterType.FILTER_ENVELOPE_DECAY]}
-                selectedControl={controls[selectedControl][0] as string}
-              />
-              <Parameter
-                label="ENV AMOUNT"
-                parameterValue={
-                  parameters[ParameterType.FILTER_ENVELOPE_AMOUNT]
-                }
+                label="CONTOUR"
+                parameterValue={parameters[ParameterType.FILTER_CONTOUR]}
                 selectedControl={controls[selectedControl][0] as string}
               />
             </ControlGroup>
@@ -179,15 +163,19 @@ function App({ smor }: { smor: SmorSynth }) {
         </div>
         <div className="smor__row">
           <div>
-            <ControlGroup label="LFO">
+            <ControlGroup label="ENVELOPE">
               <Parameter
-                label="FREQUENCY"
-                parameterValue={parameters[ParameterType.LFO_FREQUENCY]}
+                label="ATTACK"
+                parameterValue={
+                  parameters[ParameterType.FILTER_ENVELOPE_ATTACK]
+                }
                 selectedControl={controls[selectedControl][0] as string}
               />
               <Parameter
-                label="FILTER"
-                parameterValue={parameters[ParameterType.LFO_CUTOFF_GAIN]}
+                label="DECAY"
+                parameterValue={
+                  parameters[ParameterType.FILTER_ENVELOPE_DECAY]
+                }
                 selectedControl={controls[selectedControl][0] as string}
               />
             </ControlGroup>
@@ -212,6 +200,23 @@ function App({ smor }: { smor: SmorSynth }) {
       </div>
     </div>
   );
+}
+
+function FrequencyMeter({ smor }: { smor: SmorSynth }) {
+  const canvas = useRef(null);
+
+  useEffect(() => {
+    const { analyser, stop } = drawFrequencyResponse(
+      canvas.current,
+      smor.audioContext
+    );
+
+    smor.lowpassFilter.filter.connect(analyser);
+
+    return () => stop();
+  }, [smor]);
+
+  return <canvas ref={canvas}></canvas>;
 }
 
 function useKeyboard(smor: SmorSynth) {
