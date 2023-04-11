@@ -4,17 +4,17 @@ import { ParameterType, SmorSynth } from "./Smor";
 
 const presets = [
   [
-    [ParameterType.OSCILLATOR_MIX, 0.5],
+    [ParameterType.OSCILLATOR_MIX, 0.7],
     [ParameterType.OSCILLATOR_DETUNE, 0.05],
     [ParameterType.OSCILLATOR_COARSE, 0],
-    [ParameterType.FILTER_CUTOFF, 0.3],
+    [ParameterType.FILTER_CUTOFF, 0.45],
     [ParameterType.FILTER_RESONANCE, 0.6],
     [ParameterType.FILTER_CONTOUR, 0],
     [ParameterType.FILTER_ENVELOPE_ATTACK, 0],
     [ParameterType.FILTER_ENVELOPE_DECAY, 0],
   ],
   [
-    [ParameterType.OSCILLATOR_MIX, 0.5],
+    [ParameterType.OSCILLATOR_MIX, 0.7],
     [ParameterType.OSCILLATOR_DETUNE, 0.05],
     [ParameterType.OSCILLATOR_COARSE, 0],
     [ParameterType.FILTER_CUTOFF, 0.3],
@@ -24,7 +24,7 @@ const presets = [
     [ParameterType.FILTER_ENVELOPE_DECAY, 0.4],
   ],
   [
-    [ParameterType.OSCILLATOR_MIX, 0.7],
+    [ParameterType.OSCILLATOR_MIX, 0.4],
     [ParameterType.OSCILLATOR_DETUNE, 0],
     [ParameterType.OSCILLATOR_COARSE, 1],
     [ParameterType.FILTER_CUTOFF, 0.7],
@@ -32,6 +32,16 @@ const presets = [
     [ParameterType.FILTER_CONTOUR, 0.2],
     [ParameterType.FILTER_ENVELOPE_ATTACK, 0.3],
     [ParameterType.FILTER_ENVELOPE_DECAY, 0.2],
+  ],
+  [
+    [ParameterType.OSCILLATOR_MIX, 0.3],
+    [ParameterType.OSCILLATOR_DETUNE, 0],
+    [ParameterType.OSCILLATOR_COARSE, 1],
+    [ParameterType.FILTER_CUTOFF, 0.4],
+    [ParameterType.FILTER_RESONANCE, 0.4],
+    [ParameterType.FILTER_CONTOUR, 0.9],
+    [ParameterType.FILTER_ENVELOPE_ATTACK, 0.0],
+    [ParameterType.FILTER_ENVELOPE_DECAY, 0.1],
   ],
 ];
 export default function Presets({ smor }: { smor: SmorSynth }) {
