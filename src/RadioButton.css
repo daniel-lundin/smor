@@ -1,0 +1,30 @@
+
+.radiobutton {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  background-color: var(--black-color);
+  color: white;
+  line-height: 40px;
+  text-align: center;
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+.radiobutton input[type="radio"] {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  appearance: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 4px;
+  background-color: var(--black-color);
+  transition: background-color 0.3s;
+  margin: 0;
+}
+
+.radiobutton input[type="radio"]:checked {
+  background-color: var(--led-color);
+}

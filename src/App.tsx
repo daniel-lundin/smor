@@ -9,9 +9,9 @@ import {
   SmorSynth,
 } from "./Smor";
 import SmorLogo from "./SmorLogo";
-import { Knob } from "react-rotary-knob";
 import { useMidi } from "./MIDIControl";
 import { Sequencer } from "./Sequencer";
+import Presets from "./Presets";
 
 function Parameter({
   label,
@@ -51,10 +51,8 @@ const controls = [
   ["CUTOFF", ParameterType.FILTER_CUTOFF],
   ["RESONANCE", ParameterType.FILTER_RESONANCE],
   ["CONTOUR", ParameterType.FILTER_CONTOUR],
-  // ["FEEDBACK", ParameterType.FILTER_FEEDBACK],
   ["ATTACK", ParameterType.FILTER_ENVELOPE_ATTACK],
   ["DECAY", ParameterType.FILTER_ENVELOPE_DECAY],
-  // ["ENV AMOUNT", ParameterType.FILTER_ENVELOPE_AMOUNT],
   ["ENERGY", ParameterType.FILTER_ENVELOPE_ENERGY],
   ["STIFFNESS", ParameterType.FILTER_ENVELOPE_STIFFNESS],
   ["DAMPING", ParameterType.FILTER_ENVELOPE_DAMPING],
@@ -68,16 +66,6 @@ function App({ smor }: { smor: SmorSynth }) {
   );
 
   const [selectedControl, setSelectedControl] = useState<number>(0);
-
-  function handleParameterKnobChange(value: number) {
-    const control = Math.floor((value / 100) * controls.length);
-    setSelectedControl(control);
-  }
-
-  function handleParameterValueChange(value: number) {
-    const currentParameter = controls[selectedControl][1] as ParameterType;
-    smor.parameters[currentParameter](value / 100);
-  }
 
   useMidi({
     onKnobChange: (knob: number, value: number) => {
@@ -121,7 +109,12 @@ function App({ smor }: { smor: SmorSynth }) {
           <div>
             <Sequencer smor={smor} />
           </div>
-          <SmorLogo/>
+          <div>
+            <ControlGroup label="PRESETS">
+              <Presets smor={smor}/>
+            </ControlGroup>
+          </div>
+          <SmorLogo />
         </div>
         <div className="smor__row">
           <div>
@@ -182,8 +175,6 @@ function App({ smor }: { smor: SmorSynth }) {
               />
             </ControlGroup>
           </div>
-        </div>
-        <div className="smor__row">
           <div>
             <ControlGroup label="ENVELOPE">
               <Parameter
@@ -193,7 +184,9 @@ function App({ smor }: { smor: SmorSynth }) {
                 }
                 selectedControl={controls[selectedControl][0] as string}
                 onChange={(value: number) => {
-                  smor.parameters[ParameterType.FILTER_ENVELOPE_ATTACK](value / 100);
+                  smor.parameters[ParameterType.FILTER_ENVELOPE_ATTACK](
+                    value / 100
+                  );
                 }}
               />
               <Parameter
@@ -201,41 +194,31 @@ function App({ smor }: { smor: SmorSynth }) {
                 parameterValue={parameters[ParameterType.FILTER_ENVELOPE_DECAY]}
                 selectedControl={controls[selectedControl][0] as string}
                 onChange={(value: number) => {
-                  smor.parameters[ParameterType.FILTER_ENVELOPE_DECAY](value / 100);
+                  smor.parameters[ParameterType.FILTER_ENVELOPE_DECAY](
+                    value / 100
+                  );
+                }}
+              />
+              <Parameter
+                label="SUSTAIN"
+                parameterValue={parameters[ParameterType.FILTER_ENVELOPE_DECAY]}
+                selectedControl={controls[selectedControl][0] as string}
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.FILTER_ENVELOPE_DECAY](
+                    value / 100
+                  );
                 }}
               />
             </ControlGroup>
           </div>
-          <div>
-            <ControlGroup label="PRESETS">
-              <button className="preset-button">1</button>
-              <button className="preset-button">2</button>
-              <button className="preset-button">3</button>
-              <button className="preset-button">4</button>
-            </ControlGroup>
-          </div>
         </div>
         <div className="smor__row">
           <div>
-            <div className="knobs">
-              <Knob
-                className="knobs__inner"
-                min={0}
-                max={100}
-                onChange={handleParameterKnobChange}
-              />
-              <Knob
-                className="knobs__outer"
-                min={0}
-                max={100}
-                onChange={handleParameterValueChange}
-              />
-            </div>
+            <Oscilloscope smor={smor} />
           </div>
-        </div>
-        <div className="smor__row">
-          <Oscilloscope smor={smor} />
-          <FrequencyMeter smor={smor} />
+          <div>
+            <FrequencyMeter smor={smor} />
+          </div>
         </div>
       </div>
     </div>

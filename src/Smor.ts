@@ -232,12 +232,11 @@ export class Oscillator {
     this.oscillatorDetune = value;
     if (this.oscillators) {
       this.oscillators[0].detune.setValueAtTime(
-        -(this.oscillatorDetune) * 100 +
-          (this.oscillatorCoarseTune - 0.5) * 2400,
+        -this.oscillatorDetune * 100 + (this.oscillatorCoarseTune - 0.5) * 2400,
         this.audioContext.currentTime
       );
       this.oscillators[1].detune.setValueAtTime(
-        (value) * 100,
+        value * 100,
         this.audioContext.currentTime
       );
     }
@@ -248,7 +247,7 @@ export class Oscillator {
     this.oscillatorCoarseTune = value;
     if (this.oscillators) {
       this.oscillators[0].detune.setValueAtTime(
-        -(this.oscillatorDetune) * 100 + (value - 0.5) * 2400,
+        -this.oscillatorDetune * 100 + (value - 0.5) * 2400,
         this.audioContext.currentTime
       );
     }
@@ -268,7 +267,7 @@ export class Oscillator {
         createOscillator(
           this.audioContext,
           frequency,
-          -(this.oscillatorDetune) * 100 +
+          -this.oscillatorDetune * 100 +
             (this.oscillatorCoarseTune - 0.5) * 2400,
           "square"
         ),
@@ -597,7 +596,6 @@ export class SmorSynth extends EventTarget {
   }
 
   attack(MIDINote: number) {
-    console.log("attack note");
     this.oscillator.attack(MIDINote);
     this.lowpassFilter.attack();
   }
@@ -614,11 +612,14 @@ export class SmorSynth extends EventTarget {
   }
 }
 
-export function MIDINoteToHertz(note) {
+export function MIDINoteToHertz(note: number) {
   return 440 * Math.pow(2, (note - 69) / 12);
 }
 
-export function drawFilterReponse(canvas, filter) {
+export function drawFilterReponse(
+  canvas: HTMLCanvasElement,
+  filter: BiquadFilterNode
+) {
   const frequencySteps = 200;
   const minFrequency = 0;
   const maxFrequency = 20000;

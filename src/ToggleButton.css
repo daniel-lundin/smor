@@ -1,0 +1,19 @@
+.togglebutton {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  background-color: var(--black-color);
+  color: white;
+  border: none;
+}
+.togglebutton--active:after {
+  position: absolute;
+  content: "";
+  top: 4px;
+  left: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 4px;
+  background-color: var(--led-color);
+}

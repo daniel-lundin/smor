@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import ControlGroup from "./ControlGroup";
 import { SmorSynth } from "./Smor";
 import "./Sequencer.css";
+import { RadioButton } from "./RadioButton";
+import ToggleButton from "./ToggleButton";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const sequences = [
   [36, 39, 43, 48, 51, 48, 43, 39],
   [36, 43, 39, 48, 36, 51],
+  [51, 48, 51, 75, 48, 39, 36, 75],
 ];
 
 async function playSequence(
@@ -31,6 +34,7 @@ async function playSequence(
     if (abortSignal.aborted) return;
   }
 }
+
 export function Sequencer({ smor }: { smor: SmorSynth }) {
   const [isPlaying, setPlaying] = useState(false);
   const [selectedSequence, setSelectedSequence] = useState(0);
@@ -54,20 +58,22 @@ export function Sequencer({ smor }: { smor: SmorSynth }) {
   }, [selectedSequence, isPlaying]);
 
   return (
-    <ControlGroup label="SEQUENCES">
-      {sequences.map((_, index) => (
-          <label key={index} className="sequence-label" htmlFor={`sequence-${index}`}>
-            {index + 1}
-            <input
-              type="radio"
-              id={`sequence-${index}`}
-              name="sequence"
+    <ControlGroup label="SEQUENCER">
+      <div className="sequencer">
+        <div className="sequencer__sequences">
+          {sequences.map((_, index) => (
+            <RadioButton
+              key={index}
+              label={`${index + 1}`}
               checked={index === selectedSequence}
               onChange={() => setSelectedSequence(index)}
             />
-          </label>
-      ))}
-      <button onClick={toggle}>{isPlaying ? "STOP" : "PLAY"}</button>
+          ))}
+        </div>
+        <ToggleButton active={isPlaying} onClick={toggle}>
+          {isPlaying ? "⏸" : "⏵"}
+        </ToggleButton>
+      </div>
     </ControlGroup>
   );
 }
