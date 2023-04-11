@@ -268,22 +268,33 @@ function Oscilloscope({ smor }: { smor: SmorSynth }) {
   return <canvas ref={canvas}></canvas>;
 }
 
+
+const keyMapping: Record<string, number> = {
+    z: 31,
+    s: 32,
+    x: 33,
+    d: 34,
+    c: 35,
+    v: 36,
+    g: 37,
+    b: 38,
+    h: 39,
+    n: 40,
+    j: 41,
+    m: 42,
+    ',': 43,
+}
 function useKeyboard(smor: SmorSynth) {
   useEffect(() => {
-    let down = false;
     function keydownHandler(event: KeyboardEvent) {
-      if (down) return;
-
-      if (event.key === "z") {
-        smor.attack(31);
+      if (event.key in keyMapping) {
+        smor.attack(keyMapping[event.key]);
       }
-      down = true;
     }
     function keyupnHandler(event: KeyboardEvent) {
-      if (event.key === "z") {
-        smor.release(31);
+      if (event.key in keyMapping) {
+        smor.release(keyMapping[event.key]);
       }
-      down = false;
     }
     document.addEventListener("keydown", keydownHandler);
     document.addEventListener("keyup", keyupnHandler);
