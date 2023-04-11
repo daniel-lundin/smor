@@ -6,7 +6,7 @@ import { SmorSynth } from "./Smor";
 import { updateRAMPreset } from "./MIDIControl";
 
 document.addEventListener(
-  "keydown",
+  "click",
   async () => {
     const audioContext = new AudioContext();
     const smor = new SmorSynth(audioContext);

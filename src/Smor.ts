@@ -305,7 +305,9 @@ export class Oscillator {
       //   this.audioContext.currentTime
       // );
     } else {
-      const frequency = MIDINoteToHertz(this.keysPressed.at(-1));
+      const lastKeyPress = this.keysPressed.at(-1);
+      if (!lastKeyPress) return;
+      const frequency = MIDINoteToHertz(lastKeyPress);
       this.parameterEventEmitter(ParameterType.OSCILLATOR_FREQUENCY, frequency);
       this.oscillators?.forEach((oscillator) => {
         oscillator.frequency.linearRampToValueAtTime(
@@ -326,7 +328,7 @@ class LowPassFilter {
   filter: BiquadFilterNode;
   contourController: GainNode;
   feedbackGain: GainNode;
-  cutoffFrequency: number;
+  cutoffFrequency?: number;
   envelopeAttack: number;
   envelopeDecay: number;
   envelope: {
@@ -378,7 +380,7 @@ class LowPassFilter {
     this.parameterEventEmitter(ParameterType.FILTER_CUTOFF, this.cutoff);
     this.parameterEventEmitter(ParameterType.FILTER_RESONANCE, this.resonance);
     this.parameterEventEmitter(ParameterType.FILTER_CONTOUR, this.contour);
-    this.parameterEventEmitter(ParameterType.FILTER_FEEDBACK, this.feedback);
+    // this.parameterEventEmitter(ParameterType.FILTER_FEEDBACK, this.feedback);
     this.parameterEventEmitter(
       ParameterType.FILTER_ENVELOPE_ATTACK,
       this.envelopeAttack
@@ -421,43 +423,47 @@ class LowPassFilter {
     this.contour = value;
     this.parameterEventEmitter(ParameterType.FILTER_CONTOUR, value);
     this.contourController.gain.setValueAtTime(
-      this.cutoffFrequency * value * 50,
+      (this.cutoffFrequency ?? 0) * value * 50,
       this.audioContext.currentTime
     );
   }
 
-  setFeedback(value: number) {
+  setFeedback(_: number) {
+    /*
     this.feedback = value;
     this.parameterEventEmitter(ParameterType.FILTER_FEEDBACK, value);
     this.feedbackGain.gain.setValueAtTime(value, this.audioContext.currentTime);
+    */
   }
 
   setEnvelopeDecay(value: number) {
     this.envelopeDecay = value;
     this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_DECAY, value);
-    const ms = value * 1000;
     this.envelope.setDecay(value);
   }
 
   setEnvelopeAttack(value: number) {
     this.envelopeAttack = value;
     this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_ATTACK, value);
-    const ms = value * 1000;
     this.envelope.setAttack(value);
   }
 
-  setEnvelopeEnergy(value: number) {
+  setEnvelopeEnergy(_: number) {
+    /*
     this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_ENERGY, value);
     this.envelope.energy = value;
+    */
   }
 
-  setEnvelopeStiffness(value: number) {
+  setEnvelopeStiffness(_: number) {
+    /*
     this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_STIFFNESS, value);
     this.envelope.stiffness = value;
+    */
   }
-  setEnvelopeDamping(value: number) {
-    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_DAMPING, value);
-    this.envelope.damping = value;
+  setEnvelopeDamping(_: number) {
+    // this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_DAMPING, value);
+    // this.envelope.damping = value;
   }
 }
 
@@ -637,6 +643,7 @@ export function drawFilterReponse(
   const canvasCtx = canvas.getContext("2d");
 
   function draw() {
+    if (!canvasCtx) return;
     filter.getFrequencyResponse(
       frequencyArray,
       magResponseOutput,

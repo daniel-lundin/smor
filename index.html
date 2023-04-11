@@ -14,14 +14,13 @@
     />
   </head>
   <body>
-    <button id="init" style="">Initialize</button>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("service-worker.js");
       }
     </script>
     <body>
-      <div id="root"></div>
+        <div id="root"><p style="color: white">Click anywhere to start</div>
       <script type="module" src="/src/main.tsx"></script>
     </body>
   </body>

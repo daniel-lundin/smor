@@ -61,11 +61,9 @@ const controls = [
 ];
 
 function App({ smor }: { smor: SmorSynth }) {
-  const [parameters, setParameters] = useState<Record<ParameterType, number>>(
-    {}
-  );
+  const [parameters, setParameters] = useState<{ [key: number]: number }>({});
 
-  const [selectedControl, setSelectedControl] = useState<number>(0);
+  const [selectedControl] = useState<number>(0);
 
   useMidi({
     onKnobChange: (knob: number, value: number) => {
@@ -111,7 +109,7 @@ function App({ smor }: { smor: SmorSynth }) {
           </div>
           <div>
             <ControlGroup label="PRESETS">
-              <Presets smor={smor}/>
+              <Presets smor={smor} />
             </ControlGroup>
           </div>
           <SmorLogo />

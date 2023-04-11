@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  overwriteKnob1ToRelative,
   queryRamMessage,
   setKnobsToRelative,
 } from "./MPKMini3";
@@ -116,7 +115,7 @@ export default function connectMidi(smor: SmorSynth) {
       } else if (control === 6) {
         smor.lowpassFilter.setEnvelopeDecay(value / 127);
       } else if (control === 7) {
-        smor.lowpassFilter.setEnvelopeAmount(value / 127);
+        smor.lowpassFilter.setContour(value / 127);
       } else if (control === 8) {
         smor.lfo.setFrequency((value / 127) * 40);
       } else if (control === 9) {
@@ -150,6 +149,7 @@ export function useMidi({
       onNoteDown,
       onKnobChange: (knob, value) => {
           currentKnobChange.current(knob, value);
+
       },
       onDrumPad: () => {},
     });
