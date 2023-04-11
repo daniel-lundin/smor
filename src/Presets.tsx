@@ -12,6 +12,7 @@ const presets = [
     [ParameterType.FILTER_CONTOUR, 0],
     [ParameterType.FILTER_ENVELOPE_ATTACK, 0],
     [ParameterType.FILTER_ENVELOPE_DECAY, 0],
+    [ParameterType.FILTER_ENVELOPE_SUSTAIN, 0],
   ],
   [
     [ParameterType.OSCILLATOR_MIX, 0.7],
@@ -22,6 +23,7 @@ const presets = [
     [ParameterType.FILTER_CONTOUR, 0.2],
     [ParameterType.FILTER_ENVELOPE_ATTACK, 0],
     [ParameterType.FILTER_ENVELOPE_DECAY, 0.4],
+    [ParameterType.FILTER_ENVELOPE_SUSTAIN, 0],
   ],
   [
     [ParameterType.OSCILLATOR_MIX, 0.4],
@@ -32,6 +34,7 @@ const presets = [
     [ParameterType.FILTER_CONTOUR, 0.2],
     [ParameterType.FILTER_ENVELOPE_ATTACK, 0.3],
     [ParameterType.FILTER_ENVELOPE_DECAY, 0.2],
+    [ParameterType.FILTER_ENVELOPE_SUSTAIN, 0],
   ],
   [
     [ParameterType.OSCILLATOR_MIX, 0.3],
@@ -42,6 +45,7 @@ const presets = [
     [ParameterType.FILTER_CONTOUR, 0.9],
     [ParameterType.FILTER_ENVELOPE_ATTACK, 0.0],
     [ParameterType.FILTER_ENVELOPE_DECAY, 0.1],
+    [ParameterType.FILTER_ENVELOPE_SUSTAIN, 0.2],
   ],
 ];
 export default function Presets({ smor }: { smor: SmorSynth }) {

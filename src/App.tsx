@@ -199,10 +199,10 @@ function App({ smor }: { smor: SmorSynth }) {
               />
               <Parameter
                 label="SUSTAIN"
-                parameterValue={parameters[ParameterType.FILTER_ENVELOPE_DECAY]}
+                parameterValue={parameters[ParameterType.FILTER_ENVELOPE_SUSTAIN]}
                 selectedControl={controls[selectedControl][0] as string}
                 onChange={(value: number) => {
-                  smor.parameters[ParameterType.FILTER_ENVELOPE_DECAY](
+                  smor.parameters[ParameterType.FILTER_ENVELOPE_SUSTAIN](
                     value / 100
                   );
                 }}
@@ -211,12 +211,12 @@ function App({ smor }: { smor: SmorSynth }) {
           </div>
         </div>
         <div className="smor__row">
-          <div>
+          <ControlGroup label="OSCILLOSCOPE">
             <Oscilloscope smor={smor} />
-          </div>
-          <div>
+          </ControlGroup >
+          <ControlGroup label="FREQUENCIES">
             <FrequencyMeter smor={smor} />
-          </div>
+          </ControlGroup>
         </div>
       </div>
     </div>

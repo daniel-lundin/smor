@@ -13,6 +13,7 @@ export enum ParameterType {
   FILTER_FEEDBACK,
   FILTER_ENVELOPE_DECAY,
   FILTER_ENVELOPE_ATTACK,
+  FILTER_ENVELOPE_SUSTAIN,
   FILTER_ENVELOPE_ENERGY,
   FILTER_ENVELOPE_STIFFNESS,
   FILTER_ENVELOPE_DAMPING,
@@ -105,17 +106,20 @@ export class SpringEnvelope {
   }
 }
 
-function createADEnvelope({
+function createADSEnvelope({
   audioContext,
   initialAttack,
   initialDecay,
+  initialSustain,
 }: {
   audioContext: AudioContext;
   initialAttack: number;
   initialDecay: number;
+  initialSustain: number;
 }) {
   let decay = initialDecay;
   let attack = initialAttack;
+  let sustain = initialSustain;
   const constantSource = audioContext.createConstantSource();
   const gainNode = audioContext.createGain();
   constantSource.connect(gainNode);
@@ -128,6 +132,9 @@ function createADEnvelope({
     },
     setDecay(updatedDecay: number) {
       decay = updatedDecay;
+    },
+    setSustain(updatedSustain: number) {
+      sustain = updatedSustain;
     },
 
     attack() {
@@ -147,7 +154,7 @@ function createADEnvelope({
       );
       if (decay) {
         gainNode.gain.exponentialRampToValueAtTime(
-          0.001,
+          sustain + 0.001,
           audioContext.currentTime + attack + decay
         );
       }
@@ -331,9 +338,11 @@ class LowPassFilter {
   cutoffFrequency?: number;
   envelopeAttack: number;
   envelopeDecay: number;
+  envelopeSustain: number;
   envelope: {
     setAttack: (arg: number) => void;
     setDecay: (arg: number) => void;
+    setSustain: (arg: number) => void;
     attack: () => void;
     release: () => void;
     connect: (audioNode: AudioNode) => void;
@@ -352,6 +361,7 @@ class LowPassFilter {
     this.contour = 0.0;
     this.envelopeAttack = 0.0;
     this.envelopeDecay = 0.0;
+    this.envelopeSustain = 0.0;
 
     this.filter = audioContext.createBiquadFilter();
     this.filter.type = "lowpass";
@@ -367,10 +377,11 @@ class LowPassFilter {
     this.filter.connect(this.feedbackGain);
     this.feedbackGain.connect(this.filter);
 
-    this.envelope = createADEnvelope({
+    this.envelope = createADSEnvelope({
       audioContext,
       initialAttack: 0,
       initialDecay: 0,
+      initialSustain: 0,
     });
 
     this.envelope.connect(this.contourController);
@@ -388,6 +399,10 @@ class LowPassFilter {
     this.parameterEventEmitter(
       ParameterType.FILTER_ENVELOPE_DECAY,
       this.envelopeDecay
+    );
+    this.parameterEventEmitter(
+      ParameterType.FILTER_ENVELOPE_SUSTAIN,
+      this.envelopeSustain
     );
   }
 
@@ -446,6 +461,12 @@ class LowPassFilter {
     this.envelopeAttack = value;
     this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_ATTACK, value);
     this.envelope.setAttack(value);
+  }
+
+  setEnvelopeSustain(value: number) {
+    this.envelopeSustain = value;
+    this.parameterEventEmitter(ParameterType.FILTER_ENVELOPE_SUSTAIN, value);
+    this.envelope.setSustain(value);
   }
 
   setEnvelopeEnergy(_: number) {
@@ -545,6 +566,9 @@ export class SmorSynth extends EventTarget {
     },
     [ParameterType.FILTER_ENVELOPE_DECAY]: (value: number) => {
       this.lowpassFilter.setEnvelopeDecay(value);
+    },
+    [ParameterType.FILTER_ENVELOPE_SUSTAIN]: (value: number) => {
+      this.lowpassFilter.setEnvelopeSustain(value);
     },
     // Spring envelop
     [ParameterType.FILTER_ENVELOPE_ENERGY]: (value: number) => {

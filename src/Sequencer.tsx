@@ -9,7 +9,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const sequences = [
   [36, 39, 43, 48, 51, 48, 43, 39],
-  [36, null, null, 36, 39, 36, 39, 36, 31, null, null, 31, 34, 31, 34, 31],
+  [36, null, null, 36, 39, 36, 39, 36, 31, null, null, 31, 34, 31, 34, null],
   [36, 48, 39, 36, 75, 51, 48, 51 ],
 ];
 
