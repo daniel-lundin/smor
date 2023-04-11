@@ -11,17 +11,20 @@ import {
 import SmorLogo from "./SmorLogo";
 import { Knob } from "react-rotary-knob";
 import { useMidi } from "./MIDIControl";
+import { Sequencer } from "./Sequencer";
 
 function Parameter({
   label,
   parameterValue,
   selectedControl,
   single,
+  onChange,
 }: {
   label: string;
   parameterValue: number;
   selectedControl: string;
   single?: boolean;
+  onChange: (arg0: number) => void;
 }) {
   return (
     <div className="parameter">
@@ -32,9 +35,11 @@ function Parameter({
           checked={label === selectedControl}
           readOnly
         />
-        {label}
+        <div>
+          <div className="parameter__name">{label}</div>
+          <LedBar value={parameterValue} single={single} onChange={onChange} />
+        </div>
       </label>
-      <LedBar value={parameterValue} single={single} />
     </div>
   );
 }
@@ -114,53 +119,90 @@ function App({ smor }: { smor: SmorSynth }) {
       <div className="smor">
         <div className="smor__row">
           <div>
-            <ControlGroup label="OSC">
+            <Sequencer smor={smor} />
+          </div>
+          <SmorLogo/>
+        </div>
+        <div className="smor__row">
+          <div>
+            <ControlGroup label="OSCILLATORS">
               <Parameter
                 label="OSC SHAPE"
                 parameterValue={parameters[ParameterType.OSCILLATOR_MIX]}
                 selectedControl={controls[selectedControl][0] as string}
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.OSCILLATOR_MIX](value / 100);
+                }}
               />
               <Parameter
                 label="DETUNE"
                 parameterValue={parameters[ParameterType.OSCILLATOR_DETUNE]}
                 selectedControl={controls[selectedControl][0] as string}
                 single
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.OSCILLATOR_DETUNE](value / 100);
+                }}
               />
               <Parameter
                 label="COARSE"
                 parameterValue={parameters[ParameterType.OSCILLATOR_COARSE]}
                 selectedControl={controls[selectedControl][0] as string}
                 single
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.OSCILLATOR_COARSE](value / 100);
+                }}
               />
             </ControlGroup>
           </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <SmorLogo />
-          </div>
-        </div>
-        <div className="smor__row">
           <div>
             <ControlGroup label="FILTER">
               <Parameter
                 label="CUTOFF"
                 parameterValue={parameters[ParameterType.FILTER_CUTOFF]}
                 selectedControl={controls[selectedControl][0] as string}
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.FILTER_CUTOFF](value / 100);
+                }}
               />
               <Parameter
                 label="RESONANCE"
                 parameterValue={parameters[ParameterType.FILTER_RESONANCE]}
                 selectedControl={controls[selectedControl][0] as string}
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.FILTER_RESONANCE](value / 100);
+                }}
               />
               <Parameter
                 label="CONTOUR"
                 parameterValue={parameters[ParameterType.FILTER_CONTOUR]}
                 selectedControl={controls[selectedControl][0] as string}
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.FILTER_CONTOUR](value / 100);
+                }}
+              />
+            </ControlGroup>
+          </div>
+        </div>
+        <div className="smor__row">
+          <div>
+            <ControlGroup label="ENVELOPE">
+              <Parameter
+                label="ATTACK"
+                parameterValue={
+                  parameters[ParameterType.FILTER_ENVELOPE_ATTACK]
+                }
+                selectedControl={controls[selectedControl][0] as string}
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.FILTER_ENVELOPE_ATTACK](value / 100);
+                }}
+              />
+              <Parameter
+                label="DECAY"
+                parameterValue={parameters[ParameterType.FILTER_ENVELOPE_DECAY]}
+                selectedControl={controls[selectedControl][0] as string}
+                onChange={(value: number) => {
+                  smor.parameters[ParameterType.FILTER_ENVELOPE_DECAY](value / 100);
+                }}
               />
             </ControlGroup>
           </div>
@@ -174,22 +216,6 @@ function App({ smor }: { smor: SmorSynth }) {
           </div>
         </div>
         <div className="smor__row">
-          <div>
-            <ControlGroup label="ENVELOPE">
-              <Parameter
-                label="ATTACK"
-                parameterValue={
-                  parameters[ParameterType.FILTER_ENVELOPE_ATTACK]
-                }
-                selectedControl={controls[selectedControl][0] as string}
-              />
-              <Parameter
-                label="DECAY"
-                parameterValue={parameters[ParameterType.FILTER_ENVELOPE_DECAY]}
-                selectedControl={controls[selectedControl][0] as string}
-              />
-            </ControlGroup>
-          </div>
           <div>
             <div className="knobs">
               <Knob

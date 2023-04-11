@@ -6,14 +6,15 @@
 .parameter label {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: flex-start;
 }
 
 .parameter input[type="radio"] {
   appearance: none;
   display: block;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   background-color: gray;
   border-radius: 100%;
   background: var(--gray-color);
@@ -58,6 +59,15 @@ canvas {
   background: var(--bg-color);
   box-sizing: border-box;
   padding: 24px;
+}
+
+.smor__logo {
+  text-decoration: uppercase;
+  font-size: 48px;
+  text-transform: uppercase;
+  font-size: 72px;
+  line-height: 1;
+  text-align: center;
 }
 
 .smor__row {

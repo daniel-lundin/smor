@@ -1,0 +1,17 @@
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.logo__header {
+  margin: 0;
+  font-size: 72px;
+  line-height: 28px;
+  text-transform: uppercase;
+}
+
+.logo__tagline {
+  margin: 0;
+}

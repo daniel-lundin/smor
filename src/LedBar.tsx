@@ -1,11 +1,14 @@
+import { ChangeEvent } from "react";
 import "./LedBar.css";
 
 export default function LedBar({
   value,
   single,
+  onChange,
 }: {
   value: number;
   single?: boolean;
+  onChange: (arg0: number) => void;
 }) {
   return (
     <div className="led-bar">
@@ -21,9 +24,20 @@ export default function LedBar({
           }
         }
         return (
-          <div key={index} className={`led-bar__bar ${modifierClass}`}></div>
+          <>
+            <div key={index} className={`led-bar__bar ${modifierClass}`}></div>
+          </>
         );
       })}
+      <input
+        className="led-bar__slider"
+        type="range"
+        min="0"
+        max="100"
+        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+          onChange(Number(event.target.value))
+        }
+      />
     </div>
   );
 }

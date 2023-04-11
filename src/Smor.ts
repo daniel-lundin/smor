@@ -422,7 +422,7 @@ class LowPassFilter {
     this.contour = value;
     this.parameterEventEmitter(ParameterType.FILTER_CONTOUR, value);
     this.contourController.gain.setValueAtTime(
-      this.cutoffFrequency * value * 10,
+      this.cutoffFrequency * value * 50,
       this.audioContext.currentTime
     );
   }
@@ -614,7 +614,7 @@ export class SmorSynth extends EventTarget {
   }
 }
 
-function MIDINoteToHertz(note) {
+export function MIDINoteToHertz(note) {
   return 440 * Math.pow(2, (note - 69) / 12);
 }
 
